@@ -4,6 +4,7 @@ const CONFIG = {
   location: "練馬区",
   hourlyChangeThreshold: 2, // 1時間あたりこの値以上の変化で「急変」と判定
   alertBeforeHours: 1,      // 急変の何時間前に通知するか
+  quietHours: { start: 22, end: 8.5 }, // 通知オフ時間（22:00〜8:30）
 };
 
 interface HourlyData {
@@ -23,6 +24,33 @@ interface PressureAlert {
   direction: "up" | "down";
 }
 
+function isQuietHours(): boolean {
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
+  const { start, end } = CONFIG.quietHours;
+
+  // 22:00〜23:59 または 0:00〜8:30
+  if (start > end) {
+    return hour >= start || hour < end;
+  }
+  return hour >= start && hour < end;
+}
+
+async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      throw new Error(`API error: ${res.status}`);
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.log(`リトライ ${i + 1}/${retries}...`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  throw new Error("Fetch failed after retries");
+}
+
 async function fetchPressureForecast(): Promise<HourlyData> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", CONFIG.latitude.toString());
@@ -31,11 +59,7 @@ async function fetchPressureForecast(): Promise<HourlyData> {
   url.searchParams.set("timezone", "Asia/Tokyo");
   url.searchParams.set("forecast_days", "2");
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
-  }
-
+  const res = await fetchWithRetry(url.toString());
   const data: WeatherResponse = await res.json();
   return data.hourly;
 }
@@ -161,7 +185,14 @@ async function main() {
   console.log(`気圧チェック開始: ${CONFIG.location}`);
   console.log(`急変閾値: 1時間あたり ±${CONFIG.hourlyChangeThreshold}hPa`);
   console.log(`通知タイミング: 急変の${CONFIG.alertBeforeHours}時間前`);
+  console.log(`通知オフ時間: ${CONFIG.quietHours.start}:00〜${CONFIG.quietHours.end}:00`);
   console.log("");
+
+  // 夜間は通知しない
+  if (isQuietHours()) {
+    console.log("通知オフ時間帯のためスキップ");
+    return;
+  }
 
   const hourly = await fetchPressureForecast();
   const alert = findUpcomingPressureChange(hourly);
