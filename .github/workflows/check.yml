@@ -1,6 +1,8 @@
 name: 気圧チェック
 
 on:
+  push:
+    branches: [master]
   schedule:
     # 毎時0分に実行（UTC）→ 日本時間で毎時9分
     - cron: "0 * * * *"
