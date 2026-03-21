@@ -26,8 +26,3 @@ jobs:
         env:
           LINE_CHANNEL_TOKEN: ${{ secrets.LINE_CHANNEL_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
-          # 累積変化検知の設定
-          CUMULATIVE_CHANGE_THRESHOLD: 3
-          ALERT_BEFORE_HOURS: 1
-          # 従来の急変検知も残す（より敏感に）
-          HOURLY_CHANGE_THRESHOLD: 1.5
