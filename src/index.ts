@@ -464,21 +464,19 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
   }
 }
 
-// 現在リスク未満で1〜2時間後にリスク3以上になる場合にアラート
+// 現在がリスク未満かつ次の1時間後にリスク3以上になる場合にアラート
+// i=1のみチェック（i=2まで見ると連続実行で重複アラートが発火するため）
 function shouldSendAlert(risks: HourRisk[]): number | null {
   const currentRisk = risks[0]?.riskLevel ?? 1;
   if (currentRisk >= 3) return null;
 
-  for (let i = 1; i <= 2 && i < risks.length; i++) {
-    if (risks[i].riskLevel >= 3) {
-      log("info", "アラート条件成立", {
-        hoursAhead: i,
-        currentRisk,
-        upcomingRisk: risks[i].riskLevel,
-        time: risks[i].time.toISOString(),
-      });
-      return i;
-    }
+  if (risks.length > 1 && risks[1].riskLevel >= 3) {
+    log("info", "アラート条件成立", {
+      currentRisk,
+      upcomingRisk: risks[1].riskLevel,
+      time: risks[1].time.toISOString(),
+    });
+    return 1;
   }
   return null;
 }
