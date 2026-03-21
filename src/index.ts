@@ -98,6 +98,7 @@ async function fetchWithRetry(url: string): Promise<Response> {
       if (res.ok) return res;
       const body = await res.text();
       lastError = new AppError(`API ${res.status}`, "API_ERROR", body);
+      log("warn", `API試行 ${i + 1}/${CONFIG.retryCount} 失敗`, { status: res.status });
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       log("warn", `API試行 ${i + 1}/${CONFIG.retryCount} 失敗`, { error: lastError.message });
@@ -300,7 +301,7 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
     const block = risks[i];
     if (!block) break;
     const startHour = block.time.getHours();
-    const endHour = startHour + 3;
+    const endHour = (startHour + 3) % 24;
     const blockMax = Math.max(...risks.slice(i, i + 3).map(r => r.riskLevel)) as RiskLevel;
     const bi = RISK[blockMax];
     const temp = Math.round(block.temperature);
@@ -355,7 +356,7 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: Temperat
   const endPressure = risks[Math.min(alertIdx + 3, risks.length - 1)]?.pressure ?? alert.pressure;
   const totalChange = endPressure - currentPressure;
   const changeStr = totalChange >= 0 ? `+${totalChange.toFixed(0)}` : totalChange.toFixed(0);
-  const direction = totalChange < 0 ? "急降下📉" : "急上昇📈";
+  const direction = totalChange < -0.5 ? "急降下📉" : totalChange > 0.5 ? "急上昇📈" : "変動📊";
   const alertHour = alert.time.getHours();
 
   // リスク要因内訳
