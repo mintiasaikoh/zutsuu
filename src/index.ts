@@ -385,6 +385,85 @@ ${trendLines.join("\n")}
 ${adviceSection}`;
 }
 
+// QuickChart.ioで気圧＋湿度グラフ画像のURLを生成
+async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
+  const hours = risks.slice(0, 12);
+  const labels = hours.map(r => `${r.time.getHours()}時`);
+  const pressures = hours.map(r => Math.round(r.pressure));
+  const humidities = hours.map(r => Math.round(r.humidity));
+
+  const riskColor: Record<RiskLevel, string> = {
+    1: "rgba(76,175,80,0.65)",
+    2: "rgba(255,235,59,0.70)",
+    3: "rgba(255,152,0,0.72)",
+    4: "rgba(244,67,54,0.75)",
+    5: "rgba(183,28,28,0.85)",
+  };
+
+  const chart = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          type: "line",
+          label: "気圧 (hPa)",
+          data: pressures,
+          yAxisID: "pressure",
+          borderColor: "#1565C0",
+          backgroundColor: "transparent",
+          borderWidth: 2.5,
+          tension: 0.35,
+          pointBackgroundColor: hours.map(r => riskColor[r.riskLevel]),
+          pointRadius: 5,
+          pointBorderColor: "#fff",
+          pointBorderWidth: 1.5,
+        },
+        {
+          type: "bar",
+          label: "湿度 (%)",
+          data: humidities,
+          yAxisID: "humidity",
+          backgroundColor: hours.map(r => riskColor[r.riskLevel]),
+          borderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        title: { display: true, text: "今後12時間の気象予報", font: { size: 14 } },
+        legend: { position: "bottom" },
+      },
+      scales: {
+        pressure: {
+          position: "left",
+          title: { display: true, text: "気圧 (hPa)" },
+        },
+        humidity: {
+          position: "right",
+          title: { display: true, text: "湿度 (%)" },
+          min: 0,
+          max: 100,
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  };
+
+  try {
+    const res = await fetch("https://quickchart.io/chart/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chart, width: 600, height: 350, backgroundColor: "white" }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.url === "string" ? data.url : null;
+  } catch {
+    return null;
+  }
+}
+
 // 現在リスク未満で1〜2時間後にリスク3以上になる場合にアラート
 function shouldSendAlert(risks: HourRisk[]): number | null {
   const currentRisk = risks[0]?.riskLevel ?? 1;
@@ -404,7 +483,7 @@ function shouldSendAlert(risks: HourRisk[]): number | null {
   return null;
 }
 
-async function sendLineMessage(message: string): Promise<void> {
+async function sendLineMessage(message: string, imageUrl?: string): Promise<void> {
   const token = process.env.LINE_CHANNEL_TOKEN;
   const userId = process.env.LINE_USER_ID;
 
@@ -412,8 +491,14 @@ async function sendLineMessage(message: string): Promise<void> {
     log("info", "[テストモード] 送信予定メッセージ");
     console.log("---");
     console.log(message);
+    if (imageUrl) console.log(`[グラフ] ${imageUrl}`);
     console.log("---");
     return;
+  }
+
+  const messages: object[] = [{ type: "text", text: message }];
+  if (imageUrl) {
+    messages.push({ type: "image", originalContentUrl: imageUrl, previewImageUrl: imageUrl });
   }
 
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -422,7 +507,7 @@ async function sendLineMessage(message: string): Promise<void> {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to: userId, messages: [{ type: "text", text: message }] }),
+    body: JSON.stringify({ to: userId, messages }),
   });
 
   if (!res.ok) {
@@ -430,7 +515,7 @@ async function sendLineMessage(message: string): Promise<void> {
     throw new AppError(`LINE API ${res.status}`, "LINE_API_ERROR", { status: res.status, response: errorText });
   }
 
-  log("info", "LINE通知送信完了");
+  log("info", "LINE通知送信完了", { hasChart: !!imageUrl });
 }
 
 async function main() {
@@ -465,16 +550,24 @@ async function main() {
     });
 
     if (isMorningBriefingTime()) {
-      const message = formatMorningBriefing(risks, swing);
-      await sendLineMessage(message);
+      const [message, chartUrl] = await Promise.all([
+        Promise.resolve(formatMorningBriefing(risks, swing)),
+        generateChartUrl(risks),
+      ]);
+      if (chartUrl) log("info", "グラフURL生成完了");
+      await sendLineMessage(message, chartUrl ?? undefined);
       log("info", "朝の予報を送信", { maxRisk12h, swingAlert: swing.hasAlert });
       return;
     }
 
     const alertIdx = shouldSendAlert(risks);
     if (alertIdx !== null) {
-      const message = formatAlertMessage(risks, alertIdx, swing);
-      await sendLineMessage(message);
+      const [message, chartUrl] = await Promise.all([
+        Promise.resolve(formatAlertMessage(risks, alertIdx, swing)),
+        generateChartUrl(risks),
+      ]);
+      if (chartUrl) log("info", "グラフURL生成完了");
+      await sendLineMessage(message, chartUrl ?? undefined);
       log("info", "気象病アラートを送信", { riskLevel: risks[alertIdx]?.riskLevel });
     } else {
       log("info", "通知なし", {
