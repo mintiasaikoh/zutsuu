@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-気圧変化による体調不良（気象病）を事前に通知するツール。Open-Meteo APIから気圧予報を取得し、急変の約1時間前にLINE Messaging APIで通知を送る。
+気圧・湿度・気温・降水の複合リスクスコアで気象病を事前に通知するツール。Open-Meteo APIから気象予報を取得し、急変の約1〜2時間前にLINE Messaging APIで通知を送る。寒暖差アラート（前日比5℃以上）も搭載。
 
 ## コマンド
 
@@ -25,11 +25,29 @@ gh workflow run check.yml
 
 1. **CONFIG** - 緯度経度、閾値、通知オフ時間の設定
 2. **isQuietHours()** - 夜間（22:00〜8:30）判定
-3. **fetchWithRetry()** - API取得（3回リトライ）
-4. **fetchPressureForecast()** - Open-Meteo APIから48時間分の気圧予報取得
-5. **findUpcomingPressureChange()** - 1時間あたり±2hPa以上の急変を検知、1時間前なら通知対象
-6. **formatMessage()** - 上昇/低下で異なるLINEメッセージ生成
-7. **sendLineMessage()** - LINE Messaging API経由で通知
+3. **isMorningBriefingTime()** - 朝の予報時間帯（8:30〜9:30）判定
+4. **fetchWithRetry()** - API取得（3回リトライ）
+5. **fetchWeatherForecast()** - Open-Meteo APIから気象予報取得（気圧・気温・湿度・降水、昨日〜3日後）
+6. **computeCompositeRisk()** - 気圧・湿度・降水・気温変動の複合スコアでリスクレベルを算出
+7. **analyzeRisk()** - 今後24時間の毎時リスクを分析
+8. **detectTemperatureSwing()** - 前日比の最高気温差（5℃以上）を検知
+9. **buildAdvice()** - リスク要因に応じた具体的アドバイスを生成
+10. **formatMorningBriefing()** - 朝の総合予報（湿度・寒暖差含む）
+11. **formatAlertMessage()** - 緊急アラート（要因内訳・具体的アドバイス含む）
+12. **shouldSendAlert()** - 1〜2時間後にリスク3以上になる場合アラート発火
+13. **sendLineMessage()** - LINE Messaging API経由で通知
+
+## 複合リスクスコア
+
+気圧（最大11pt）＋湿度（最大3pt）＋降水（最大2pt）＋気温変動（最大2pt）= 最大18pt
+
+| スコア | レベル |
+|--------|--------|
+| 9pt以上 | 5: 危険 |
+| 7〜8pt | 4: 警戒 |
+| 4〜6pt | 3: 注意 |
+| 2〜3pt | 2: やや注意 |
+| 0〜1pt | 1: 安心 |
 
 ## 環境変数
 
