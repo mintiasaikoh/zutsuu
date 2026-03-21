@@ -6,7 +6,7 @@ const CONFIG = {
     start: process.env.QUIET_START ? Number(process.env.QUIET_START) : 22,
     end: process.env.QUIET_END ? Number(process.env.QUIET_END) : 8.5,
   },
-  morningBriefing: { start: 8.5, end: 9.5 }, // 8:30〜9:30
+  morningBriefing: { start: 8.5, end: 9.5 },
   retryCount: 3,
   retryDelay: 2000,
 };
@@ -25,16 +25,38 @@ interface WeatherHourly {
   time: string[];
   pressure_msl: number[];
   temperature_2m: number[];
+  relative_humidity_2m: number[];
+  precipitation_probability: number[];
+  precipitation: number[];
+}
+
+interface RiskFactors {
+  pressureScore: number;
+  humidityScore: number;
+  precipScore: number;
+  tempScore: number;
 }
 
 interface HourRisk {
   time: Date;
   pressure: number;
   temperature: number;
+  humidity: number;
+  precipProb: number;
+  precip: number;
   change1h: number;
   change3h: number;
   change6h: number;
   riskLevel: RiskLevel;
+  riskScore: number;
+  riskFactors: RiskFactors;
+}
+
+interface TemperatureSwing {
+  diff: number;
+  hasAlert: boolean;
+  todayMax: number;
+  yesterdayMax: number;
 }
 
 class AppError extends Error {
@@ -90,9 +112,13 @@ async function fetchWeatherForecast(): Promise<WeatherHourly> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", CONFIG.latitude.toString());
   url.searchParams.set("longitude", CONFIG.longitude.toString());
-  url.searchParams.set("hourly", "pressure_msl,temperature_2m");
+  url.searchParams.set(
+    "hourly",
+    "pressure_msl,temperature_2m,relative_humidity_2m,precipitation_probability,precipitation"
+  );
   url.searchParams.set("timezone", "Asia/Tokyo");
   url.searchParams.set("forecast_days", "3");
+  url.searchParams.set("past_days", "1");
 
   const res = await fetchWithRetry(url.toString());
   const data = await res.json();
@@ -101,37 +127,60 @@ async function fetchWeatherForecast(): Promise<WeatherHourly> {
   return data.hourly;
 }
 
-// 頭痛ーると同様の多要素リスクスコアリング
-function computeRiskLevel(change1h: number, change3h: number, change6h: number, pressure: number): RiskLevel {
-  let score = 0;
-
-  // 1時間変化スコア（最大3点）
+// 複合リスクスコアリング
+// 気圧（最大11pt）+ 湿度（最大3pt）+ 降水（最大2pt）+ 気温変動（最大2pt）= 最大18pt
+function computeCompositeRisk(
+  change1h: number, change3h: number, change6h: number, pressure: number,
+  humidity: number, precipProb: number, precip: number, tempChange3h: number
+): { level: RiskLevel; score: number; factors: RiskFactors } {
+  // 気圧スコア（最大11pt）
+  let pressureScore = 0;
   const abs1h = Math.abs(change1h);
-  if (abs1h >= 4) score += 3;
-  else if (abs1h >= 3) score += 2;
-  else if (abs1h >= 2) score += 1;
+  if (abs1h >= 4) pressureScore += 3;
+  else if (abs1h >= 3) pressureScore += 2;
+  else if (abs1h >= 2) pressureScore += 1;
 
-  // 3時間累積変化スコア（最大3点）
   const abs3h = Math.abs(change3h);
-  if (abs3h >= 8) score += 3;
-  else if (abs3h >= 6) score += 2;
-  else if (abs3h >= 4) score += 1;
+  if (abs3h >= 8) pressureScore += 3;
+  else if (abs3h >= 6) pressureScore += 2;
+  else if (abs3h >= 4) pressureScore += 1;
 
-  // 6時間累積変化スコア（最大2点）
   const abs6h = Math.abs(change6h);
-  if (abs6h >= 10) score += 2;
-  else if (abs6h >= 6) score += 1;
+  if (abs6h >= 10) pressureScore += 2;
+  else if (abs6h >= 6) pressureScore += 1;
 
-  // 絶対気圧スコア（低気圧ペナルティ、最大3点）
-  if (pressure <= 995) score += 3;
-  else if (pressure <= 1000) score += 2;
-  else if (pressure <= 1005) score += 1;
+  if (pressure <= 995) pressureScore += 3;
+  else if (pressure <= 1000) pressureScore += 2;
+  else if (pressure <= 1005) pressureScore += 1;
 
-  if (score >= 7) return 5;
-  if (score >= 5) return 4;
-  if (score >= 3) return 3;
-  if (score >= 1) return 2;
-  return 1;
+  // 湿度スコア（最大3pt）：高湿度＋気圧低下の複合リスクにボーナス
+  let humidityScore = 0;
+  if (humidity >= 85) humidityScore += 2;
+  else if (humidity >= 75) humidityScore += 1;
+  if (humidity >= 75 && change3h <= -4) humidityScore += 1;
+
+  // 降水スコア（最大2pt）
+  let precipScore = 0;
+  if (precipProb >= 80) precipScore += 2;
+  else if (precipProb >= 60) precipScore += 1;
+  if (precip > 2 && precipScore < 2) precipScore += 1;
+
+  // 気温変動スコア（最大2pt）：3時間以内の急激な気温変化
+  let tempScore = 0;
+  const absTempChange = Math.abs(tempChange3h);
+  if (absTempChange >= 8) tempScore += 2;
+  else if (absTempChange >= 5) tempScore += 1;
+
+  const score = pressureScore + humidityScore + precipScore + tempScore;
+
+  let level: RiskLevel;
+  if (score >= 9) level = 5;
+  else if (score >= 7) level = 4;
+  else if (score >= 4) level = 3;
+  else if (score >= 2) level = 2;
+  else level = 1;
+
+  return { level, score, factors: { pressureScore, humidityScore, precipScore, tempScore } };
 }
 
 function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
@@ -141,6 +190,9 @@ function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
 
   const p = hourly.pressure_msl;
   const t = hourly.temperature_2m;
+  const h = hourly.relative_humidity_2m;
+  const pp = hourly.precipitation_probability;
+  const pr = hourly.precipitation;
   const n = p.length;
   const risks: HourRisk[] = [];
 
@@ -148,17 +200,58 @@ function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
     const change1h = i + 1 < n ? p[i + 1] - p[i] : 0;
     const change3h = i + 3 < n ? p[i + 3] - p[i] : change1h * 3;
     const change6h = i + 6 < n ? p[i + 6] - p[i] : change1h * 6;
+    const tempChange3h = i + 3 < n ? t[i + 3] - t[i] : 0;
+    const humidity = h[i] ?? 0;
+    const precipProb = pp[i] ?? 0;
+    const precip = pr[i] ?? 0;
+
+    const { level, score, factors } = computeCompositeRisk(
+      change1h, change3h, change6h, p[i],
+      humidity, precipProb, precip, tempChange3h
+    );
+
     risks.push({
       time: new Date(hourly.time[i]),
       pressure: p[i],
       temperature: t[i],
+      humidity,
+      precipProb,
+      precip,
       change1h,
       change3h,
       change6h,
-      riskLevel: computeRiskLevel(change1h, change3h, change6h, p[i]),
+      riskLevel: level,
+      riskScore: score,
+      riskFactors: factors,
     });
   }
   return risks;
+}
+
+// 前日比の気温差を検出（頭痛ーるにはない差別化機能）
+function detectTemperatureSwing(hourly: WeatherHourly): TemperatureSwing {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+
+  const todayTemps: number[] = [];
+  const yesterdayTemps: number[] = [];
+
+  for (let i = 0; i < hourly.time.length; i++) {
+    const t = new Date(hourly.time[i]);
+    if (t >= todayStart && t < todayEnd) todayTemps.push(hourly.temperature_2m[i]);
+    else if (t >= yesterdayStart && t < todayStart) yesterdayTemps.push(hourly.temperature_2m[i]);
+  }
+
+  if (todayTemps.length === 0 || yesterdayTemps.length === 0) {
+    return { diff: 0, hasAlert: false, todayMax: 0, yesterdayMax: 0 };
+  }
+
+  const todayMax = Math.max(...todayTemps);
+  const yesterdayMax = Math.max(...yesterdayTemps);
+  const diff = Math.abs(todayMax - yesterdayMax);
+  return { diff, hasAlert: diff >= 5, todayMax, yesterdayMax };
 }
 
 function trendArrow(change: number): string {
@@ -171,17 +264,37 @@ function trendArrow(change: number): string {
   return "─";
 }
 
-function formatMorningBriefing(risks: HourRisk[]): string {
+function buildAdvice(risk: HourRisk, swing: TemperatureSwing): string[] {
+  const advice: string[] = [];
+  const { pressureScore, humidityScore, precipScore } = risk.riskFactors;
+
+  if (pressureScore >= 4) {
+    const dir = risk.change3h < 0 ? "下降" : "上昇";
+    advice.push(`気圧${dir}が主因。💊 早めの服薬を推奨（五苓散等）`);
+  }
+  if (humidityScore >= 1) {
+    advice.push(`💧 湿度${Math.round(risk.humidity)}%と高め。室内の除湿を心がけて`);
+  }
+  if (swing.hasAlert) {
+    const dir = swing.todayMax > swing.yesterdayMax ? "上昇" : "低下";
+    advice.push(`🌡️ 気温${dir}(差${Math.round(swing.diff)}°C)。服装調整を`);
+  }
+  if (precipScore >= 1) {
+    advice.push(`☂️ 降水の可能性(${Math.round(risk.precipProb)}%)。傘を持参して`);
+  }
+  advice.push("🫁 深呼吸・耳周りマッサージも効果的");
+  return advice;
+}
+
+function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): string {
   const today = new Date().toLocaleDateString("ja-JP", {
     month: "numeric", day: "numeric", weekday: "short",
   });
 
-  // 今後12時間の最大リスク
   const dayRisks = risks.slice(0, 12);
   const maxRisk = Math.max(...dayRisks.map(r => r.riskLevel)) as RiskLevel;
   const riskInfo = RISK[maxRisk];
 
-  // 3時間ブロックで表示
   const blocks: string[] = [];
   for (let i = 0; i < Math.min(dayRisks.length, 12); i += 3) {
     const block = risks[i];
@@ -191,21 +304,30 @@ function formatMorningBriefing(risks: HourRisk[]): string {
     const blockMax = Math.max(...risks.slice(i, i + 3).map(r => r.riskLevel)) as RiskLevel;
     const bi = RISK[blockMax];
     const temp = Math.round(block.temperature);
-    blocks.push(`${String(startHour).padStart(2)}〜${endHour}時  ${block.pressure.toFixed(0)}hPa  ${temp}°C  ${bi.emoji} ${bi.label}`);
+    const hum = Math.round(block.humidity);
+    blocks.push(`${String(startHour).padStart(2)}〜${endHour}時  ${block.pressure.toFixed(0)}hPa  ${temp}°C  湿度${hum}%  ${bi.emoji} ${bi.label}`);
   }
 
-  // ピーク時間帯
   const peak = dayRisks.reduce((a, b) => a.riskLevel >= b.riskLevel ? a : b);
   const peakHour = peak.time.getHours();
 
-  let advice: string;
+  let mainAdvice: string;
   if (maxRisk >= 4) {
-    advice = `\n⚠️ ${peakHour}時台が最も危険です\n💊 外出前に薬を飲んでおくことをおすすめします`;
+    mainAdvice = `⚠️ ${peakHour}時台が最も危険です\n💊 外出前に薬を飲んでおくことをおすすめします`;
   } else if (maxRisk === 3) {
-    advice = `\n⚠️ ${peakHour}時台に注意が必要です\n💊 薬を持ち歩くと安心です`;
+    mainAdvice = `⚠️ ${peakHour}時台に注意が必要です\n💊 薬を持ち歩くと安心です`;
   } else {
-    advice = `\n✅ 今日は気象病リスクが低めです`;
+    mainAdvice = "✅ 今日は気象病リスクが低めです";
   }
+
+  const swingLine = swing.hasAlert
+    ? `\n🌡️ 寒暖差注意：昨日${Math.round(swing.yesterdayMax)}°C→今日${Math.round(swing.todayMax)}°C（差${Math.round(swing.diff)}°C）`
+    : "";
+
+  const adviceLines = buildAdvice(peak, swing).slice(0, -1);
+  const adviceSection = adviceLines.length > 0
+    ? `\n━━━ 今日の注意点 ━━━\n${adviceLines.map(a => `• ${a}`).join("\n")}`
+    : "";
 
   return `☀️ 今日の気象病予報（${CONFIG.location}）
 ${today}
@@ -214,14 +336,14 @@ ${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${maxRisk}/5）
 
 ━━━ 時間帯別リスク ━━━
 ${blocks.join("\n")}
-${advice}`;
+
+${mainAdvice}${swingLine}${adviceSection}`;
 }
 
-function formatAlertMessage(risks: HourRisk[], alertIdx: number): string {
+function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: TemperatureSwing): string {
   const alert = risks[alertIdx];
   const riskInfo = RISK[alert.riskLevel];
 
-  // 前後の気圧推移（最大6時間分）
   const window = risks.slice(Math.max(0, alertIdx - 1), alertIdx + 5);
   const trendLines = window.map(r => {
     const h = String(r.time.getHours()).padStart(2);
@@ -236,24 +358,37 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number): string {
   const direction = totalChange < 0 ? "急降下📉" : "急上昇📈";
   const alertHour = alert.time.getHours();
 
+  // リスク要因内訳
+  const { pressureScore, humidityScore, precipScore, tempScore } = alert.riskFactors;
+  const factorParts: string[] = [];
+  if (pressureScore > 0) factorParts.push(`気圧${pressureScore}pt`);
+  if (humidityScore > 0) factorParts.push(`湿度${humidityScore}pt`);
+  if (precipScore > 0) factorParts.push(`降水${precipScore}pt`);
+  if (tempScore > 0) factorParts.push(`気温変動${tempScore}pt`);
+  const factorLine = factorParts.length > 0
+    ? `\n📊 要因内訳: ${factorParts.join(" / ")}（合計${alert.riskScore}pt）\n`
+    : "";
+
+  const adviceLines = buildAdvice(alert, swing);
+  const adviceSection = adviceLines.map(a => `• ${a}`).join("\n");
+
   return `⚠️ 気象病アラート（${CONFIG.location}）
 
 ${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${alert.riskLevel}/5）
 
 気圧${direction}  ${changeStr}hPa
-
+${factorLine}
 ━━━ 気圧の推移 ━━━
 ${trendLines.join("\n")}
 
 ⏰ ${alertHour}時台から症状が出やすくなります
-💊 今が薬を飲む目安です
-🫁 深呼吸・耳周りマッサージも効果的`;
+${adviceSection}`;
 }
 
-// 現在がリスク未満で1〜2時間後にリスク3以上になる場合にアラート
+// 現在リスク未満で1〜2時間後にリスク3以上になる場合にアラート
 function shouldSendAlert(risks: HourRisk[]): number | null {
   const currentRisk = risks[0]?.riskLevel ?? 1;
-  if (currentRisk >= 3) return null; // 既に危険域なので再通知しない
+  if (currentRisk >= 3) return null;
 
   for (let i = 1; i <= 2 && i < risks.length; i++) {
     if (risks[i].riskLevel >= 3) {
@@ -309,6 +444,7 @@ async function main() {
 
     const hourly = await fetchWeatherForecast();
     const risks = analyzeRisk(hourly);
+    const swing = detectTemperatureSwing(hourly);
 
     if (risks.length === 0) {
       log("warn", "リスク分析データ不足");
@@ -322,21 +458,22 @@ async function main() {
       currentRisk,
       maxRisk12h,
       currentPressure: risks[0].pressure.toFixed(1),
+      currentHumidity: risks[0].humidity,
+      tempSwingAlert: swing.hasAlert,
+      tempSwingDiff: swing.diff.toFixed(1),
       isMorning: isMorningBriefingTime(),
     });
 
-    // 朝の予報（8:30〜9:30）
     if (isMorningBriefingTime()) {
-      const message = formatMorningBriefing(risks);
+      const message = formatMorningBriefing(risks, swing);
       await sendLineMessage(message);
-      log("info", "朝の予報を送信", { maxRisk12h });
+      log("info", "朝の予報を送信", { maxRisk12h, swingAlert: swing.hasAlert });
       return;
     }
 
-    // 直前アラート
     const alertIdx = shouldSendAlert(risks);
     if (alertIdx !== null) {
-      const message = formatAlertMessage(risks, alertIdx);
+      const message = formatAlertMessage(risks, alertIdx, swing);
       await sendLineMessage(message);
       log("info", "気象病アラートを送信", { riskLevel: risks[alertIdx]?.riskLevel });
     } else {
