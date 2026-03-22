@@ -6,7 +6,7 @@ const CONFIG = {
     start: process.env.QUIET_START ? Number(process.env.QUIET_START) : 22,
     end: process.env.QUIET_END ? Number(process.env.QUIET_END) : 8.5,
   },
-  morningBriefing: { start: 8.5, end: 9.5 },
+  morningBriefing: { start: 8.5, end: 10.0 }, // 08:30〜10:00 JST（MORNING_MODEが優先）
   retryCount: 3,
   retryDelay: 2000,
 };
@@ -521,7 +521,9 @@ async function main() {
   try {
     log("info", "気圧チェック開始", { location: CONFIG.location });
 
-    if (isQuietHours()) {
+    const morningMode = process.env.MORNING_MODE === "true";
+
+    if (isQuietHours() && !morningMode) {
       log("info", "通知オフ時間帯のためスキップ");
       return;
     }
@@ -548,7 +550,7 @@ async function main() {
       isMorning: isMorningBriefingTime(),
     });
 
-    if (isMorningBriefingTime()) {
+    if (morningMode || isMorningBriefingTime()) {
       const [message, chartUrl] = await Promise.all([
         Promise.resolve(formatMorningBriefing(risks, swing)),
         generateChartUrl(risks),
