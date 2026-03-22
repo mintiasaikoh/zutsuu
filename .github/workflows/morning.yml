@@ -1,14 +1,12 @@
-name: 気圧チェック（アラート）
+name: 朝の気象予報
 
 on:
-  push:
-    branches: [master]
   schedule:
-    - cron: "0 * * * *"  # 毎時0分（UTC）→ JST 毎時09分頃
+    - cron: "0 0 * * *"  # 毎日09:00 JST
   workflow_dispatch:
 
 jobs:
-  check:
+  morning:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +18,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Check pressure
+      - name: Send morning briefing
         run: npm run check
         env:
           LINE_CHANNEL_TOKEN: ${{ secrets.LINE_CHANNEL_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           TZ: Asia/Tokyo
+          MORNING_MODE: "true"

@@ -1,5 +1,3 @@
-import * as fs from "fs";
-
 const CONFIG = {
   latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.74,
   longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.65,
@@ -8,7 +6,7 @@ const CONFIG = {
     start: process.env.QUIET_START ? Number(process.env.QUIET_START) : 22,
     end: process.env.QUIET_END ? Number(process.env.QUIET_END) : 8.5,
   },
-  morningBriefing: { start: 7.4, end: 10.0 }, // 07:24〜10:00 JST（3本のcronをカバー）
+  morningBriefing: { start: 8.5, end: 10.0 }, // 08:30〜10:00 JST（MORNING_MODEが優先）
   retryCount: 3,
   retryDelay: 2000,
 };
@@ -523,7 +521,9 @@ async function main() {
   try {
     log("info", "気圧チェック開始", { location: CONFIG.location });
 
-    if (isQuietHours()) {
+    const morningMode = process.env.MORNING_MODE === "true";
+
+    if (isQuietHours() && !morningMode) {
       log("info", "通知オフ時間帯のためスキップ");
       return;
     }
@@ -550,19 +550,13 @@ async function main() {
       isMorning: isMorningBriefingTime(),
     });
 
-    if (isMorningBriefingTime()) {
-      if (process.env.BRIEFING_SENT_TODAY === "true") {
-        log("info", "朝の予報は送信済みのためスキップ");
-        return;
-      }
+    if (morningMode || isMorningBriefingTime()) {
       const [message, chartUrl] = await Promise.all([
         Promise.resolve(formatMorningBriefing(risks, swing)),
         generateChartUrl(risks),
       ]);
       if (chartUrl) log("info", "グラフURL生成完了");
       await sendLineMessage(message, chartUrl ?? undefined);
-      // 送信完了マーカーを書き出す（ワークフローがキャッシュ保存に使用）
-      await fs.promises.writeFile(".morning-sent", new Date().toISOString());
       log("info", "朝の予報を送信", { maxRisk12h, swingAlert: swing.hasAlert });
       return;
     }
