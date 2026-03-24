@@ -455,7 +455,7 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
     const res = await fetch("https://quickchart.io/chart/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chart, width: 600, height: 350, backgroundColor: "white" }),
+      body: JSON.stringify({ chart, width: 600, height: 350, backgroundColor: "white", version: "3" }),
     });
     if (!res.ok) return null;
     const data = await res.json();
