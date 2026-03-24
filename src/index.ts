@@ -401,6 +401,9 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
     5: "rgba(183,28,28,0.85)",
   };
 
+  const pMin = Math.min(...pressures) - 5;
+  const pMax = Math.max(...pressures) + 5;
+
   const chart = {
     type: "bar",
     data: {
@@ -419,6 +422,12 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
           pointRadius: 5,
           pointBorderColor: "#fff",
           pointBorderWidth: 1.5,
+          datalabels: {
+            anchor: "end",
+            align: "top",
+            color: "#1565C0",
+            font: { size: 10 },
+          },
         },
         {
           type: "bar",
@@ -427,6 +436,13 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
           yAxisID: "humidity",
           backgroundColor: hours.map(r => riskColor[r.riskLevel]),
           borderWidth: 0,
+          datalabels: {
+            anchor: "end",
+            align: "start",
+            color: "#333",
+            font: { size: 10 },
+            formatter: (v: number) => v + "%",
+          },
         },
       ],
     },
@@ -438,6 +454,8 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
       scales: {
         pressure: {
           position: "left",
+          min: pMin,
+          max: pMax,
           title: { display: true, text: "気圧 (hPa)" },
         },
         humidity: {
