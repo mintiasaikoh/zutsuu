@@ -386,19 +386,18 @@ ${trendLines.join("\n")}
 ${adviceSection}`;
 }
 
-// QuickChart.ioで気圧＋湿度グラフ画像のURLを生成
+// QuickChart.ioで気圧グラフ画像のURLを生成（リスクレベルを背景色で表示）
 async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
   const hours = risks.slice(0, 12);
   const labels = hours.map(r => `${r.time.getHours()}時`);
   const pressures = hours.map(r => Math.round(r.pressure));
-  const humidities = hours.map(r => Math.round(r.humidity));
 
-  const riskColor: Record<RiskLevel, string> = {
-    1: "rgba(76,175,80,0.65)",
-    2: "rgba(255,235,59,0.70)",
-    3: "rgba(255,152,0,0.72)",
-    4: "rgba(244,67,54,0.75)",
-    5: "rgba(183,28,28,0.85)",
+  const riskBgColor: Record<RiskLevel, string> = {
+    1: "rgba(144,238,144,0.45)",
+    2: "rgba(255,235,59,0.50)",
+    3: "rgba(255,152,0,0.50)",
+    4: "rgba(244,67,54,0.55)",
+    5: "rgba(183,28,28,0.65)",
   };
 
   const pMin = Math.min(...pressures) - 5;
@@ -410,6 +409,17 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
       labels,
       datasets: [
         {
+          // リスクレベルを背景色として表示（棒グラフでチャートエリアを塗りつぶし）
+          type: "bar",
+          label: "リスク",
+          data: hours.map(() => pMax),
+          backgroundColor: hours.map(r => riskBgColor[r.riskLevel]),
+          borderWidth: 0,
+          yAxisID: "pressure",
+          datalabels: { display: false },
+        },
+        {
+          // 気圧折れ線
           type: "line",
           label: "気圧 (hPa)",
           data: pressures,
@@ -418,38 +428,23 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
           backgroundColor: "transparent",
           borderWidth: 2.5,
           tension: 0.35,
-          pointBackgroundColor: hours.map(r => riskColor[r.riskLevel]),
-          pointRadius: 5,
+          pointBackgroundColor: "#1565C0",
+          pointRadius: 4,
           pointBorderColor: "#fff",
           pointBorderWidth: 1.5,
           datalabels: {
             anchor: "end",
             align: "top",
             color: "#1565C0",
-            font: { size: 10 },
-          },
-        },
-        {
-          type: "bar",
-          label: "湿度 (%)",
-          data: humidities,
-          yAxisID: "humidity",
-          backgroundColor: hours.map(r => riskColor[r.riskLevel]),
-          borderWidth: 0,
-          datalabels: {
-            anchor: "end",
-            align: "start",
-            color: "#333",
-            font: { size: 10 },
-            formatter: (v: number) => v + "%",
+            font: { size: 9 },
           },
         },
       ],
     },
     options: {
       plugins: {
-        title: { display: true, text: "今後12時間の気象予報", font: { size: 14 } },
-        legend: { position: "bottom" },
+        title: { display: true, text: "今後12時間の気圧予報", font: { size: 14 } },
+        legend: { display: false },
       },
       scales: {
         pressure: {
@@ -457,13 +452,6 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
           min: pMin,
           max: pMax,
           title: { display: true, text: "気圧 (hPa)" },
-        },
-        humidity: {
-          position: "right",
-          title: { display: true, text: "湿度 (%)" },
-          min: 0,
-          max: 100,
-          grid: { drawOnChartArea: false },
         },
       },
     },
