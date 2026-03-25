@@ -11,14 +11,13 @@ const CONFIG = {
   retryDelay: 2000,
 };
 
-type RiskLevel = 1 | 2 | 3 | 4 | 5;
+type RiskLevel = 1 | 2 | 3 | 4;
 
 const RISK: Record<RiskLevel, { label: string; emoji: string; bar: string }> = {
-  1: { label: "安心",     emoji: "🟢", bar: "●○○○○" },
-  2: { label: "やや注意", emoji: "🟡", bar: "●●○○○" },
-  3: { label: "注意",     emoji: "🟠", bar: "●●●○○" },
-  4: { label: "警戒",     emoji: "🔴", bar: "●●●●○" },
-  5: { label: "危険",     emoji: "🆘", bar: "●●●●●" },
+  1: { label: "安心",     emoji: "🟢", bar: "○○○○" },
+  2: { label: "やや注意", emoji: "🟢", bar: "●○○○" },
+  3: { label: "注意",     emoji: "🟠", bar: "●●●○" },
+  4: { label: "危険",     emoji: "🔴", bar: "●●●●" },
 };
 
 interface WeatherHourly {
@@ -175,10 +174,9 @@ function computeCompositeRisk(
   const score = pressureScore + humidityScore + precipScore + tempScore;
 
   let level: RiskLevel;
-  if (score >= 9) level = 5;
-  else if (score >= 7) level = 4;
+  if (score >= 7) level = 4;
   else if (score >= 4) level = 3;
-  else if (score >= 2) level = 2;
+  else if (score >= 1) level = 2;
   else level = 1;
 
   return { level, score, factors: { pressureScore, humidityScore, precipScore, tempScore } };
@@ -333,7 +331,7 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
   return `☀️ 今日の気象病予報（${CONFIG.location}）
 ${today}
 
-${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${maxRisk}/5）
+${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${maxRisk}/4）
 
 ━━━ 時間帯別リスク ━━━
 ${blocks.join("\n")}
@@ -375,7 +373,7 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: Temperat
 
   return `⚠️ 気象病アラート（${CONFIG.location}）
 
-${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${alert.riskLevel}/5）
+${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${alert.riskLevel}/4）
 
 気圧${direction}  ${changeStr}hPa
 ${factorLine}
@@ -393,11 +391,10 @@ async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
   const pressures = hours.map(r => Math.round(r.pressure));
 
   const riskBgColor: Record<RiskLevel, string> = {
-    1: "rgba(144,238,144,0.45)",
-    2: "rgba(255,235,59,0.50)",
+    1: "transparent",
+    2: "rgba(76,175,80,0.40)",
     3: "rgba(255,152,0,0.50)",
     4: "rgba(244,67,54,0.55)",
-    5: "rgba(183,28,28,0.65)",
   };
 
   const pMin = Math.min(...pressures) - 5;
