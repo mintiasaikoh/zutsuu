@@ -67,7 +67,7 @@ class AppError extends Error {
 
 function log(level: "info" | "warn" | "error", message: string, data?: unknown): void {
   const timestamp = new Date().toISOString();
-  console.log(JSON.stringify({ timestamp, level, message, ...(data && { data }) }));
+  console.log(JSON.stringify({ timestamp, level, message, ...(data !== undefined ? { data } : {}) }));
 }
 
 function validateConfig(): void {
@@ -265,14 +265,11 @@ function trendArrow(change: number): string {
 
 function buildAdvice(risk: HourRisk, swing: TemperatureSwing): string[] {
   const advice: string[] = [];
-  const { pressureScore, humidityScore, precipScore } = risk.riskFactors;
+  const { pressureScore, precipScore } = risk.riskFactors;
 
   if (pressureScore >= 4) {
     const dir = risk.change3h < 0 ? "下降" : "上昇";
     advice.push(`気圧${dir}が主因。💊 早めの服薬を推奨（五苓散等）`);
-  }
-  if (humidityScore >= 1) {
-    advice.push(`💧 湿度${Math.round(risk.humidity)}%と高め。室内の除湿を心がけて`);
   }
   if (swing.hasAlert) {
     const dir = swing.todayMax > swing.yesterdayMax ? "上昇" : "低下";
@@ -283,6 +280,31 @@ function buildAdvice(risk: HourRisk, swing: TemperatureSwing): string[] {
   }
   advice.push("🫁 深呼吸・耳周りマッサージも効果的");
   return advice;
+}
+
+function buildRainForecast(risks: HourRisk[]): string {
+  const RAIN_THRESHOLD = 40;
+  const rainHours = risks.slice(0, 24).filter(r => r.precipProb >= RAIN_THRESHOLD);
+  if (rainHours.length === 0) return "☀️ 雨の心配なし";
+
+  const maxProb = Math.max(...rainHours.map(r => r.precipProb));
+
+  // 連続した時間帯をまとめる
+  const ranges: string[] = [];
+  let rangeStart = rainHours[0];
+  let prev = rainHours[0];
+  for (let i = 1; i < rainHours.length; i++) {
+    const curr = rainHours[i];
+    const gap = curr.time.getHours() - prev.time.getHours();
+    if (gap > 1) {
+      ranges.push(`${rangeStart.time.getHours()}〜${prev.time.getHours() + 1}時`);
+      rangeStart = curr;
+    }
+    prev = curr;
+  }
+  ranges.push(`${rangeStart.time.getHours()}〜${prev.time.getHours() + 1}時`);
+
+  return `🌧️ 雨の可能性あり（最大${Math.round(maxProb)}%）\n☂️ ${ranges.join("、")}頃`;
 }
 
 function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): string {
@@ -303,8 +325,7 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
     const blockMax = Math.max(...risks.slice(i, i + 3).map(r => r.riskLevel)) as RiskLevel;
     const bi = RISK[blockMax];
     const temp = Math.round(block.temperature);
-    const hum = Math.round(block.humidity);
-    blocks.push(`${String(startHour).padStart(2)}〜${endHour}時  ${block.pressure.toFixed(0)}hPa  ${temp}°C  湿度${hum}%  ${bi.emoji} ${bi.label}`);
+    blocks.push(`${String(startHour).padStart(2)}〜${endHour}時  ${block.pressure.toFixed(0)}hPa  ${temp}°C  ${bi.emoji} ${bi.label}`);
   }
 
   const peak = dayRisks.reduce((a, b) => a.riskLevel >= b.riskLevel ? a : b);
@@ -323,6 +344,8 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
     ? `\n🌡️ 寒暖差注意：昨日${Math.round(swing.yesterdayMax)}°C→今日${Math.round(swing.todayMax)}°C（差${Math.round(swing.diff)}°C）`
     : "";
 
+  const rainForecast = buildRainForecast(risks);
+
   const adviceLines = buildAdvice(peak, swing).slice(0, -1);
   const adviceSection = adviceLines.length > 0
     ? `\n━━━ 今日の注意点 ━━━\n${adviceLines.map(a => `• ${a}`).join("\n")}`
@@ -335,6 +358,9 @@ ${riskInfo.emoji} ${riskInfo.bar} ${riskInfo.label}（${maxRisk}/4）
 
 ━━━ 時間帯別リスク ━━━
 ${blocks.join("\n")}
+
+━━━ 雨予報 ━━━
+${rainForecast}
 
 ${mainAdvice}${swingLine}${adviceSection}`;
 }
@@ -358,10 +384,9 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: Temperat
   const alertHour = alert.time.getHours();
 
   // リスク要因内訳
-  const { pressureScore, humidityScore, precipScore, tempScore } = alert.riskFactors;
+  const { pressureScore, precipScore, tempScore } = alert.riskFactors;
   const factorParts: string[] = [];
   if (pressureScore > 0) factorParts.push(`気圧${pressureScore}pt`);
-  if (humidityScore > 0) factorParts.push(`湿度${humidityScore}pt`);
   if (precipScore > 0) factorParts.push(`降水${precipScore}pt`);
   if (tempScore > 0) factorParts.push(`気温変動${tempScore}pt`);
   const factorLine = factorParts.length > 0
@@ -485,6 +510,48 @@ function shouldSendAlert(risks: HourRisk[]): number | null {
   return null;
 }
 
+// 現在は雨でないが、1時間後に降水確率60%以上になる場合に雨アラート
+const RAIN_ALERT_THRESHOLD = 60;
+function shouldSendRainAlert(risks: HourRisk[]): number | null {
+  const currentPrecipProb = risks[0]?.precipProb ?? 0;
+  if (currentPrecipProb >= RAIN_ALERT_THRESHOLD) return null;
+
+  if (risks.length > 1 && risks[1].precipProb >= RAIN_ALERT_THRESHOLD) {
+    log("info", "雨アラート条件成立", {
+      currentPrecipProb,
+      upcomingPrecipProb: risks[1].precipProb,
+      time: risks[1].time.toISOString(),
+    });
+    return 1;
+  }
+  return null;
+}
+
+function formatRainAlertMessage(risks: HourRisk[]): string {
+  const alertHour = risks[1].time.getHours();
+  const prob = Math.round(risks[1].precipProb);
+
+  // 雨が続く時間帯を算出
+  const rainHours = risks.slice(1).filter(r => r.precipProb >= RAIN_ALERT_THRESHOLD);
+  const endHour = rainHours.length > 0
+    ? rainHours[rainHours.length - 1].time.getHours() + 1
+    : alertHour + 1;
+
+  const change3h = risks[1].change3h.toFixed(1);
+  const changeStr = Number(change3h) >= 0 ? `+${change3h}` : change3h;
+  const pressureDir = Number(change3h) < -0.5 ? "下降中📉" : Number(change3h) > 0.5 ? "上昇中📈" : "ほぼ変化なし";
+
+  return `☂️ まもなく雨の可能性（${CONFIG.location}）
+
+⏰ ${alertHour}〜${endHour}時頃に雨の見込み（降水確率${prob}%）
+
+🌡️ 気圧は${pressureDir}（3時間で${changeStr}hPa）
+
+• 傘の準備をおすすめします
+• 気圧変化で頭痛が出やすい時間帯です
+• 🫁 深呼吸・耳周りマッサージも効果的`;
+}
+
 async function sendLineMessage(message: string, imageUrl?: string): Promise<void> {
   const token = process.env.LINE_CHANNEL_TOKEN;
   const userId = process.env.LINE_USER_ID;
@@ -565,6 +632,9 @@ async function main() {
     }
 
     const alertIdx = shouldSendAlert(risks);
+    const rainAlertIdx = shouldSendRainAlert(risks);
+    let sent = false;
+
     if (alertIdx !== null) {
       const [message, chartUrl] = await Promise.all([
         Promise.resolve(formatAlertMessage(risks, alertIdx, swing)),
@@ -573,7 +643,17 @@ async function main() {
       if (chartUrl) log("info", "グラフURL生成完了");
       await sendLineMessage(message, chartUrl ?? undefined);
       log("info", "気象病アラートを送信", { riskLevel: risks[alertIdx]?.riskLevel });
-    } else {
+      sent = true;
+    }
+
+    if (rainAlertIdx !== null) {
+      const message = formatRainAlertMessage(risks);
+      await sendLineMessage(message);
+      log("info", "雨アラートを送信", { precipProb: risks[rainAlertIdx]?.precipProb });
+      sent = true;
+    }
+
+    if (!sent) {
       log("info", "通知なし", {
         currentRisk,
         next3hRisks: risks.slice(1, 4).map(r => r.riskLevel),
