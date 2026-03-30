@@ -1,3 +1,5 @@
+import { PNG } from "pngjs";
+
 const CONFIG = {
   latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.7377,
   longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.6458,
@@ -56,6 +58,11 @@ interface TemperatureSwing {
   hasAlert: boolean;
   todayMax: number;
   yesterdayMax: number;
+}
+
+interface RainAlertResult {
+  alertIdx: number;
+  nowcastIntensity?: number;
 }
 
 class AppError extends Error {
@@ -544,24 +551,129 @@ function shouldSendAlert(risks: HourRisk[]): number | null {
   return null;
 }
 
-// 現在は雨でないが、1時間後に降水確率60%以上になる場合に雨アラート
+// 気象庁ナウキャスト 色テーブル（RGB → mm/h）
+const NOWCAST_COLOR_TABLE: Array<{ r: number; g: number; b: number; mmh: number }> = [
+  { r: 242, g: 242, b: 255, mmh: 0 },
+  { r: 160, g: 210, b: 255, mmh: 1 },
+  { r: 33,  g: 140, b: 255, mmh: 5 },
+  { r: 0,   g: 65,  b: 255, mmh: 10 },
+  { r: 250, g: 245, b: 0,   mmh: 20 },
+  { r: 255, g: 153, b: 0,   mmh: 30 },
+  { r: 255, g: 40,  b: 0,   mmh: 50 },
+  { r: 180, g: 0,   b: 104, mmh: 80 },
+];
+
+function colorToMmh(r: number, g: number, b: number, a: number): number {
+  if (a === 0) return 0;
+  let minDist = Infinity;
+  let result = 0;
+  for (const entry of NOWCAST_COLOR_TABLE) {
+    const dist = Math.sqrt((r - entry.r) ** 2 + (g - entry.g) ** 2 + (b - entry.b) ** 2);
+    if (dist < minDist) {
+      minDist = dist;
+      result = entry.mmh;
+    }
+  }
+  return result;
+}
+
+function parseJmaTime(s: string): number {
+  return new Date(
+    `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}Z`
+  ).getTime();
+}
+
+// 気象庁高解像度降水ナウキャストから指定分後の降水強度(mm/h)を取得
+// エラー時は -1 を返す
+async function fetchNowcastPrecip(minutesAhead: number): Promise<number> {
+  try {
+    const res = await fetchWithRetry(
+      "https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json"
+    );
+    const targetTimes: Array<{ basetime: string; validtime: string }> = await res.json();
+    if (!targetTimes.length) return -1;
+
+    const targetMs = Date.now() + minutesAhead * 60 * 1000;
+    let best = targetTimes[0];
+    let bestDiff = Math.abs(parseJmaTime(targetTimes[0].validtime) - targetMs);
+    for (const entry of targetTimes) {
+      const diff = Math.abs(parseJmaTime(entry.validtime) - targetMs);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = entry;
+      }
+    }
+    log("info", "ナウキャスト対象時刻選択", { basetime: best.basetime, validtime: best.validtime, minutesAhead });
+
+    const z = 8, x = 227, y = 100;
+    const tileUrl = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${best.basetime}/none/${best.validtime}/surf/hrpns/${z}/${x}/${y}.png`;
+    const tileRes = await fetchWithRetry(tileUrl);
+    const arrayBuf = await tileRes.arrayBuffer();
+    const png = PNG.sync.read(Buffer.from(arrayBuf));
+
+    // タイル内ピクセル座標を計算（Web Mercator投影）
+    const n = Math.pow(2, z);
+    const px = Math.floor((n * (CONFIG.longitude + 180) / 360 - x) * 256);
+    const latRad = CONFIG.latitude * Math.PI / 180;
+    const mercY = Math.log(Math.tan(latRad) + 1 / Math.cos(latRad));
+    const py = Math.floor((n / 2 * (1 - mercY / Math.PI) - y) * 256);
+
+    if (px < 0 || px >= 256 || py < 0 || py >= 256) {
+      log("warn", "ナウキャスト: ピクセル座標が範囲外", { px, py });
+      return -1;
+    }
+
+    const idx = (py * png.width + px) * 4;
+    const r = png.data[idx];
+    const g = png.data[idx + 1];
+    const b = png.data[idx + 2];
+    const a = png.data[idx + 3];
+    const mmh = colorToMmh(r, g, b, a);
+
+    log("info", "ナウキャスト降水強度取得", { minutesAhead, px, py, r, g, b, a, mmh });
+    return mmh;
+  } catch (err) {
+    log("warn", "ナウキャスト取得失敗", { minutesAhead, error: err instanceof Error ? err.message : String(err) });
+    return -1;
+  }
+}
+
+// 現在は雨でないが、60分後に雨になる場合に雨アラート（ナウキャストベース）
+// ナウキャスト失敗時は Open-Meteo の降水確率にフォールバック
 const RAIN_ALERT_THRESHOLD = 60;
-function shouldSendRainAlert(risks: HourRisk[]): number | null {
+const NOWCAST_RAIN_THRESHOLD = 1; // mm/h
+
+async function shouldSendRainAlert(risks: HourRisk[]): Promise<RainAlertResult | null> {
+  const [nowIntensity, futureIntensity] = await Promise.all([
+    fetchNowcastPrecip(0),
+    fetchNowcastPrecip(60),
+  ]);
+
+  if (futureIntensity !== -1) {
+    if (futureIntensity >= NOWCAST_RAIN_THRESHOLD && nowIntensity < NOWCAST_RAIN_THRESHOLD) {
+      log("info", "雨アラート条件成立（ナウキャスト）", { nowIntensity, futureIntensity });
+      return { alertIdx: 1, nowcastIntensity: futureIntensity };
+    }
+    log("info", "ナウキャスト雨アラート条件不成立", { nowIntensity, futureIntensity });
+    return null;
+  }
+
+  // フォールバック: Open-Meteo の降水確率で判定
+  log("info", "ナウキャスト失敗、フォールバック使用");
   const currentPrecipProb = risks[0]?.precipProb ?? 0;
   if (currentPrecipProb >= RAIN_ALERT_THRESHOLD) return null;
 
   if (risks.length > 1 && risks[1].precipProb >= RAIN_ALERT_THRESHOLD) {
-    log("info", "雨アラート条件成立", {
+    log("info", "雨アラート条件成立（フォールバック）", {
       currentPrecipProb,
       upcomingPrecipProb: risks[1].precipProb,
-      time: risks[1].time.toISOString(),
     });
-    return 1;
+    return { alertIdx: 1 };
   }
   return null;
 }
 
-function formatRainAlertMessage(risks: HourRisk[]): string {
+function formatRainAlertMessage(risks: HourRisk[], nowcastIntensity?: number): string {
   const alertHour = risks[1].time.getHours();
   const prob = Math.round(risks[1].precipProb);
 
@@ -575,9 +687,13 @@ function formatRainAlertMessage(risks: HourRisk[]): string {
   const changeStr = Number(change3h) >= 0 ? `+${change3h}` : change3h;
   const pressureDir = Number(change3h) < -0.5 ? "下降中📉" : Number(change3h) > 0.5 ? "上昇中📈" : "ほぼ変化なし";
 
+  const intensityLine = nowcastIntensity !== undefined && nowcastIntensity > 0
+    ? `\n💧 予想強度: 約${nowcastIntensity}mm/h`
+    : "";
+
   return `☂️ まもなく雨の可能性（${CONFIG.location}）
 
-⏰ ${alertHour}〜${endHour}時頃に雨の見込み（降水確率${prob}%）
+⏰ ${alertHour}〜${endHour}時頃に雨の見込み（降水確率${prob}%）${intensityLine}
 
 🌡️ 気圧は${pressureDir}（3時間で${changeStr}hPa）
 
@@ -669,7 +785,7 @@ async function main() {
     }
 
     const alertIdx = shouldSendAlert(risks);
-    const rainAlertIdx = shouldSendRainAlert(risks);
+    const rainAlertResult = await shouldSendRainAlert(risks);
     let sent = false;
 
     if (alertIdx !== null) {
@@ -683,10 +799,13 @@ async function main() {
       sent = true;
     }
 
-    if (rainAlertIdx !== null) {
-      const message = formatRainAlertMessage(risks);
+    if (rainAlertResult !== null) {
+      const message = formatRainAlertMessage(risks, rainAlertResult.nowcastIntensity);
       await sendLineMessage(message);
-      log("info", "雨アラートを送信", { precipProb: risks[rainAlertIdx]?.precipProb });
+      log("info", "雨アラートを送信", {
+        precipProb: risks[rainAlertResult.alertIdx]?.precipProb,
+        nowcastIntensity: rainAlertResult.nowcastIntensity,
+      });
       sent = true;
     }
 
