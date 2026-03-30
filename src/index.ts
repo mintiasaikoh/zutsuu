@@ -182,7 +182,40 @@ function computeCompositeRisk(
   return { level, score, factors: { pressureScore, humidityScore, precipScore, tempScore } };
 }
 
-function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
+async function fetchJmaPops(): Promise<Map<number, number>> {
+  const result = new Map<number, number>();
+  try {
+    const url = "https://www.jma.go.jp/bosai/forecast/data/forecast/130000.json";
+    const res = await fetchWithRetry(url);
+    const data = await res.json();
+
+    const timeSeries = data?.[0]?.timeSeries?.[0];
+    if (!timeSeries) return result;
+
+    const timeDefines: string[] = timeSeries.timeDefines;
+    const pops: string[] = timeSeries.areas?.[0]?.pops;
+    if (!timeDefines || !pops) return result;
+
+    for (let i = 0; i < timeDefines.length; i++) {
+      const blockStart = new Date(timeDefines[i]).getTime();
+      const blockEnd = i + 1 < timeDefines.length
+        ? new Date(timeDefines[i + 1]).getTime()
+        : blockStart + 6 * 60 * 60 * 1000;
+      const prob = pops[i] === "--" ? 0 : Number(pops[i]);
+
+      for (let t = blockStart; t < blockEnd; t += 60 * 60 * 1000) {
+        result.set(t, prob);
+      }
+    }
+
+    log("info", "気象庁降水確率取得完了", { entries: result.size });
+  } catch (err) {
+    log("warn", "気象庁API失敗、フォールバック使用", { error: err instanceof Error ? err.message : String(err) });
+  }
+  return result;
+}
+
+function analyzeRisk(hourly: WeatherHourly, jmaPopsMap: Map<number, number>): HourRisk[] {
   const now = new Date();
   const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
   if (startIdx === -1) return [];
@@ -201,7 +234,8 @@ function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
     const change6h = i + 6 < n ? p[i + 6] - p[i] : change1h * 6;
     const tempChange3h = i + 3 < n ? t[i + 3] - t[i] : 0;
     const humidity = h[i] ?? 0;
-    const precipProb = pp[i] ?? 0;
+    const timeMs = new Date(hourly.time[i]).getTime();
+    const precipProb = jmaPopsMap.has(timeMs) ? jmaPopsMap.get(timeMs)! : (pp[i] ?? 0);
     const precip = pr[i] ?? 0;
 
     const { level, score, factors } = computeCompositeRisk(
@@ -598,8 +632,11 @@ async function main() {
       return;
     }
 
-    const hourly = await fetchWeatherForecast();
-    const risks = analyzeRisk(hourly);
+    const [hourly, jmaPopsMap] = await Promise.all([
+      fetchWeatherForecast(),
+      fetchJmaPops(),
+    ]);
+    const risks = analyzeRisk(hourly, jmaPopsMap);
     const swing = detectTemperatureSwing(hourly);
 
     if (risks.length === 0) {
