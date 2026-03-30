@@ -1,6 +1,6 @@
 const CONFIG = {
-  latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.74,
-  longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.65,
+  latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.7377,
+  longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.6458,
   location: process.env.LOCATION || "練馬区",
   quietHours: {
     start: process.env.QUIET_START ? Number(process.env.QUIET_START) : 22,
