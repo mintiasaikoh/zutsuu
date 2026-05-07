@@ -129,9 +129,11 @@ async function fetchWeatherForecast(): Promise<WeatherHourly> {
 
 // 複合リスクスコアリング
 // 気圧（最大11pt）+ 湿度（最大3pt）+ 降水（最大2pt）+ 気温変動（最大2pt）= 最大18pt
+// back3h/back6h: 過去3h/6hの気圧変化（急落後の底でも検知できるよう前後の最大値を使用）
 function computeCompositeRisk(
   change1h: number, change3h: number, change6h: number, pressure: number,
-  humidity: number, precipProb: number, precip: number, tempChange3h: number
+  humidity: number, precipProb: number, precip: number, tempChange3h: number,
+  back3h = 0, back6h = 0
 ): { level: RiskLevel; score: number; factors: RiskFactors } {
   // 気圧スコア（最大11pt）
   let pressureScore = 0;
@@ -140,24 +142,25 @@ function computeCompositeRisk(
   else if (abs1h >= 3) pressureScore += 2;
   else if (abs1h >= 2) pressureScore += 1;
 
-  const abs3h = Math.abs(change3h);
-  if (abs3h >= 8) pressureScore += 3;
-  else if (abs3h >= 6) pressureScore += 2;
-  else if (abs3h >= 4) pressureScore += 1;
+  // 前向き・後向きの最大変化量を採用（急落後の底でも過去の変化を検知）
+  const abs3h = Math.max(Math.abs(change3h), Math.abs(back3h));
+  if (abs3h >= 6) pressureScore += 3;
+  else if (abs3h >= 4) pressureScore += 2;
+  else if (abs3h >= 2) pressureScore += 1;
 
-  const abs6h = Math.abs(change6h);
-  if (abs6h >= 10) pressureScore += 2;
-  else if (abs6h >= 6) pressureScore += 1;
+  const abs6h = Math.max(Math.abs(change6h), Math.abs(back6h));
+  if (abs6h >= 8) pressureScore += 2;
+  else if (abs6h >= 4) pressureScore += 1;
 
-  if (pressure <= 995) pressureScore += 3;
-  else if (pressure <= 1000) pressureScore += 2;
-  else if (pressure <= 1005) pressureScore += 1;
+  if (pressure <= 1000) pressureScore += 3;
+  else if (pressure <= 1005) pressureScore += 2;
+  else if (pressure <= 1010) pressureScore += 1;
 
   // 湿度スコア（最大3pt）：高湿度＋気圧低下の複合リスクにボーナス
   let humidityScore = 0;
   if (humidity >= 85) humidityScore += 2;
   else if (humidity >= 75) humidityScore += 1;
-  if (humidity >= 75 && change3h <= -4) humidityScore += 1;
+  if (humidity >= 75 && (change3h <= -3 || back3h >= 3)) humidityScore += 1;
 
   // 降水スコア（最大2pt）
   let precipScore = 0;
@@ -174,8 +177,8 @@ function computeCompositeRisk(
   const score = pressureScore + humidityScore + precipScore + tempScore;
 
   let level: RiskLevel;
-  if (score >= 7) level = 4;
-  else if (score >= 4) level = 3;
+  if (score >= 6) level = 4;
+  else if (score >= 3) level = 3;
   else if (score >= 1) level = 2;
   else level = 1;
 
@@ -199,6 +202,9 @@ function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
     const change1h = i + 1 < n ? p[i + 1] - p[i] : 0;
     const change3h = i + 3 < n ? p[i + 3] - p[i] : change1h * 3;
     const change6h = i + 6 < n ? p[i + 6] - p[i] : change1h * 6;
+    // 過去の気圧変化（急落後の底でも高リスクを維持するため）
+    const back3h = i - 3 >= 0 ? p[i] - p[i - 3] : 0;
+    const back6h = i - 6 >= 0 ? p[i] - p[i - 6] : 0;
     const tempChange3h = i + 3 < n ? t[i + 3] - t[i] : 0;
     const humidity = h[i] ?? 0;
     const precipProb = pp[i] ?? 0;
@@ -206,7 +212,7 @@ function analyzeRisk(hourly: WeatherHourly): HourRisk[] {
 
     const { level, score, factors } = computeCompositeRisk(
       change1h, change3h, change6h, p[i],
-      humidity, precipProb, precip, tempChange3h
+      humidity, precipProb, precip, tempChange3h, back3h, back6h
     );
 
     risks.push({
