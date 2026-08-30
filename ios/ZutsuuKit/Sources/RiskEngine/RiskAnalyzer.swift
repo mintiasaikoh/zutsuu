@@ -38,7 +38,7 @@ public struct RiskAnalyzer: Sendable {
                 humidity: point.humidity,
                 precipitationChance: point.precipitationChance,
                 precipitationAmount: point.precipitationAmount,
-                temperatureChange3h: temperatureChange(series, at: index, hoursAgo: 3)
+                temperatureChange3h: temperatureChange(series, at: index, hoursAhead: 3)
             )
 
             return HourlyRisk(point: point, assessment: assessment, pressureChanges: changes)

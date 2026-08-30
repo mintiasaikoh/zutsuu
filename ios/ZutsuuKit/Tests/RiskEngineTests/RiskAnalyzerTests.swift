@@ -15,14 +15,34 @@ struct RiskAnalyzerTests {
         #expect(result.allSatisfy { $0.assessment.level == .calm })
     }
 
-    @Test("気圧が急降下する区間でリスクが上がる")
+    /// 変化量は前方差分なので、リスクが上がるのは低下が**始まる**時刻（index 11）。
+    /// index を特定して固定する。「どこかが上がっている」だけの表明では
+    /// 前方・後方どちらでも通ってしまい、向きの誤りを検出できない。
+    @Test("気圧が急降下し始める時刻でリスクが上がる")
     func detectsPressureDrop() {
         var pressures = [Double](repeating: 1013, count: 12)
         pressures += stride(from: 1011.0, through: 995.0, by: -2.0)
         let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
                                     latitude: 35.7, longitude: 139.6)
         let result = analyzer.analyze(makeSeries(pressures: pressures))
-        #expect(result.last!.assessment.level >= .caution)
+        #expect(result[11].assessment.level >= .caution)
+        #expect(result[11].pressureChanges == PressureChanges(oneHour: -2, threeHour: -6, sixHour: -12))
+    }
+
+    /// 向きそのものを固定する回帰ガード。
+    /// 下がって落ち着く系列では、低下の入口でスコアが高く、出口では低い。
+    /// 後方差分に戻すとこの非対称が反転するため、このテストが落ちる。
+    @Test("低下の入口でリスクが高く、落ち切った後は低い")
+    func riskPeaksAtOnsetNotAtEnd() {
+        let pressures: [Double] = [1013, 1011, 1009, 1007, 1005, 1003, 1001, 999,
+                                   997, 995, 995, 995, 995, 995, 995, 995]
+        let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
+                                    latitude: 35.7, longitude: 139.6)
+        let result = analyzer.analyze(makeSeries(pressures: pressures))
+        #expect(result[0].assessment.factors.pressureChange == 5)
+        #expect(result[0].assessment.level >= .caution)
+        #expect(result[9].assessment.factors.pressureChange == 0)
+        #expect(result[9].assessment.level == .calm)
     }
 
     @Test("空の系列を渡しても落ちない")
@@ -88,7 +108,7 @@ struct RiskAnalyzerTests {
         let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
                                     latitude: 35.7, longitude: 139.6)
         let result = analyzer.analyze(makeSeries(pressures: [1010, 1008, 1006, 1004]))
-        #expect(result[3].pressureChanges == PressureChanges(oneHour: -2, threeHour: -6, sixHour: 0))
-        #expect(result[3].point.pressure == 1004)
+        #expect(result[0].pressureChanges == PressureChanges(oneHour: -2, threeHour: -6, sixHour: 0))
+        #expect(result[0].point.pressure == 1010)
     }
 }
