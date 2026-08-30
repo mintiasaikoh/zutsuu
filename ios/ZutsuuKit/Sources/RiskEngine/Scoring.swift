@@ -22,3 +22,14 @@ func pressureChangeScore(_ changes: PressureChanges) -> Int {
 
     return score
 }
+
+/// 絶対気圧のスコア（最大 3pt）。
+/// 固定閾値ではなく地点別の分布上の位置で評価する。
+/// これにより熱帯での常時アラートと高緯度内陸での無発火を同時に解消する。
+/// 副次的に高標高地の問題も解決する（分布の相対位置は標高の影響を受けないため）。
+func absolutePressureScore(percentile: Double) -> Int {
+    if percentile < 0.10 { return 3 }
+    if percentile < 0.25 { return 2 }
+    if percentile < 0.40 { return 1 }
+    return 0
+}
