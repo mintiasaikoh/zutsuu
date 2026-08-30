@@ -85,7 +85,25 @@ const change3h = i + 3 < n ? p[i + 3] - p[i] : change1h * 3;
 前方窓が系列外に出るため、気圧変化スコアが必然的に 0 になる。
 72 時間の予報のうち先頭 24 時間を解析する運用ではこれは見えないが、
 **スケジューラに「ちょうど解析窓ぶんに切り詰めた系列」を渡すと、末尾が静かに「安心」と読まれる**。
-ヘルパー側ではなく呼び出し側でガードすること。
+**この申し送り先は誤りだった（訂正）。** 「呼び出し側」を `AlertScheduler` と読んだのが間違いで、
+窓深さを所有する最近傍の呼び出し側は `RiskAnalyzer.analyze` 自身である。
+
+しかも設計書 §4 はリスク曲線を 72 時間全域で消費すると規定しており、
+末尾劣化は例外経路ではなく**既定の経路**にある。実測（onset を index 22 に置いた場合）:
+
+```
+完全な系列   levels 20..23 = [3, 4, 4, 4]   ← 真値
+切り詰め系列 levels 20..23 = [2, 2, 2, 1]   ← アラート発火ゼロ
+```
+
+`AlertScheduler` は `>= .caution` で発火するため、この曲線では 8 時間の急降下が丸ごと消える。
+
+**採用した解決:** `analyze` が末尾 `lookaheadHours`（=6）を返さない。
+72 時間の予報を渡せば 66 時間ぶりのリスク曲線が返る。
+`hasCompleteLookahead` フラグ案は却下した。消費側が無視できるフラグは切り詰めより弱く、
+また切り詰めは「渡した点数より少ない」という形で不足が呼び出し側に見える。
+部分信号（index n-3 では 1h/3h 窓はまだ有効）を捨てる代償は承知のうえで、
+静かな偽「安心」のほうが失うものが大きいと判断した。
 
 **記録の訂正:** `pressureChange` は「任意の index に対して全域で定義」ではない。
 負の index は 0 を返して安全だが、`at: Int.max, hoursAhead: 6` は境界チェックの前に
@@ -1339,6 +1357,15 @@ Batch A のレビューで Task 12 へ繰り越した項目。
 - **M9:** `.github/workflows/` に Swift パッケージ用のジョブを追加する。
   現状は Node の LINE 版ジョブ 2 本しかなく、完了条件の `swift test` がローカル限定の保証になっている。
   `macos-latest` で `swift test` と `swift build -Xswiftc -warnings-as-errors` を回す
+- **Batch C 繰り越し:** 以下は Task 12 で判断する。
+  - `RiskAnalyzer` が保持する `Calendar` は init 時点のタイムゾーンを固定する。
+    設計書 §5.2 は端末タイムゾーン基準かつグローバル（＝ユーザーが移動する）前提なので、
+    `RiskAnalyzer` を長寿命に持つと移動後に古い tz で月を判定する。Plan 2 での寿命方針を決める
+  - `latitude` / `longitude` を `Coordinate` 値型に束ねるか。入れ替えはテストで検出できているが、
+    型にすれば表現不能になる。`PressureClimatology` の署名変更を伴うため、Plan 6 着手前が最も安い
+  - `HourlyRisk` に `Identifiable` を付けるか（Plan 3 の SwiftUI `List` / `ForEach` が要求する）
+  - 自由関数 `pressureChanges` と `HourlyRisk.pressureChanges` プロパティの同名。
+    現状は曖昧さなしだが、将来 `RiskAnalyzer` に同名メンバーが生えると静かにメンバーへ解決される
 - **M10:** 解決済み。watchOS プラットフォームコンポーネントのインストール後、
   `xcodebuild build -scheme ZutsuuKit -destination 'generic/platform=watchOS'` の成功を実測で確認した。
   スキーム名は `RiskEngine` ではなく `ZutsuuKit`（パッケージ名）である点に注意
