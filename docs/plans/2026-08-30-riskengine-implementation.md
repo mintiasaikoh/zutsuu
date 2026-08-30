@@ -24,9 +24,31 @@ WeatherKit は iOS 専用で entitlement を要するため、エンジンから
 |---|---|---|---|
 | A | Task 1-2 | 完了・レビュー承認済み | `13af292` `1de661a` `7af6963` |
 | B | Task 3-6 | 完了・レビュー承認済み | `630b61c` `2873b08` `9a07f21` `d9764de` |
-| C | Task 7-8 | 未着手 | |
-| D | Task 9-10 | 未着手 | |
-| E | Task 11-12 | 未着手 | |
+| C | Task 7-8 | 完了・レビュー承認済み | `f4ee860` `493391f` `67dad2a` `840db5c` |
+| D | Task 9-10 | 完了 | `0477872` `82ab707` `128b7f4` `213a7dc` |
+| E | Task 11-12 | 完了 | `3233186` `6928d16` |
+
+### 最終 API（Task 12 で確定）
+
+**下流の計画（特に Plan 6）は本節を正とすること。** 各タスクの本文中のコード片は
+実装時に変更が入っており、古い記述が残っている箇所がある。
+
+- `PressureClimatology.percentile(pressure:coordinate:month:)` — 緯度経度は `Coordinate` 値型に束ねた。
+  同型の `Double` が隣接する引数は本プロジェクトで 3 回バグを生んだため、
+  入れ替えをテストではなく型で表現不能にした
+- `RiskAnalyzer.init(climatology:coordinate:calendar:)`
+- `RiskAnalyzer.analyze` は末尾 `lookaheadHours`（=6）を返さない
+- `AlertScheduler.schedule(_:quietHours:now:)` — `now` は必須。設計書 §4 の規則 1〜5 を実装する
+- 純粋な値型はすべて `Hashable`。`Codable` は付けていない（Plan 2 が永続化形式を決めてから）
+- `HourlyRisk` は `Identifiable`（`id` は `point.date`）
+
+**`RiskAnalyzer` と `AlertScheduler` は解析のたびに作り直すこと。**
+どちらも `Calendar` を値として保持するため、init 時点のタイムゾーンが固定される。
+グローバルアプリでユーザーが移動した後も長寿命に持ち回すと、古いタイムゾーンで判定する。
+これはドキュメントによる制約であって型では防いでいない
+（テストの決定性のために注入可能である必要があるため）。Plan 2 の責任範囲。
+
+---
 
 ### Batch A のレビューで確定した変更
 
@@ -467,7 +489,7 @@ import Foundation
 
 struct StubClimatology: PressureClimatology {
     let value: Double
-    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double {
+    func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double {
         value
     }
 }
@@ -523,7 +545,7 @@ Expected: FAIL（`cannot find 'absolutePressureScore' in scope`）
 public protocol PressureClimatology: Sendable {
     /// 与えられた気圧が、その地点・その月の分布上どの位置にあるかを 0.0〜1.0 で返す。
     /// 0.0 に近いほど「その土地としては低い」。
-    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double
+    func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double
 }
 ```
 
