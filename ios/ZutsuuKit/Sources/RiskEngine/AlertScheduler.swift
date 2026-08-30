@@ -64,17 +64,17 @@ public struct ScheduledAlert: Sendable, Equatable {
     public let fireDate: Date
     /// リスクが閾値を超える時刻（エピソードの入口）。通知本文の「何時から」。
     public let targetDate: Date
-    /// エピソード中に到達する最高レベル。常に `assessment.level` と一致する。
-    public let targetLevel: RiskLevel
     /// 最高レベルに最初に到達した時点の判定。
     /// 通知本文で要因（気圧・湿度・気温）を出し分けるために持たせている。
     public let assessment: RiskAssessment
 
-    public init(fireDate: Date, targetDate: Date,
-                targetLevel: RiskLevel, assessment: RiskAssessment) {
+    /// エピソード中に到達する最高レベル。
+    /// `assessment` から導出する。二重に持つと食い違い得るため格納しない。
+    public var targetLevel: RiskLevel { assessment.level }
+
+    public init(fireDate: Date, targetDate: Date, assessment: RiskAssessment) {
         self.fireDate = fireDate
         self.targetDate = targetDate
-        self.targetLevel = targetLevel
         self.assessment = assessment
     }
 }
@@ -157,29 +157,29 @@ public struct AlertScheduler: Sendable {
         let targetDate = episode.onsetDate
 
         // 規則 1: 既に起きた事象は予約しない。
-        // 効果としては規則 5・6 に含まれる（過ぎた対象は発火が `now + grace` へ
-        // 繰り上がり、必ず対象時刻以降になって規則 6 で落ちる）。
+        // 効果としては規則 3・5 に含まれる（過ぎた対象は発火が `now + grace` へ
+        // 繰り上がり、必ず対象時刻以降になって規則 5 で落ちる）。
         // 意図を明示するために残しているだけで、ここが唯一の防波堤ではない。
         guard targetDate > now else { return nil }
 
-        // 規則 2: 対象時刻が静穏時間内なら予約しない。
-        // 就寝中に到来する事象には行動できる瞬間が無い。
-        // 規則 4 が「事後通知」を作らないのはこの規則があるため。
-        if let quietHours, quietHours.contains(targetDate, calendar: calendar) { return nil }
-
-        // 規則 3: 既定のリードタイム。
+        // 規則 2: 既定のリードタイム。
         // 経過時間そのものなので絶対時刻演算でよい（夏時間の影響を受けない）。
         var fireDate = targetDate.addingTimeInterval(-Self.leadTime)
 
-        // 規則 5: 発火時刻が過ぎていれば直後に鳴らす。破棄しないのは、
+        // 規則 3: 発火時刻が過ぎていれば直後に鳴らす。破棄しないのは、
         // 差し迫った上昇こそ最も知らせる価値があるため。
         if fireDate <= now { fireDate = now.addingTimeInterval(Self.grace) }
 
         // 規則 4: 静穏時間に掛かる発火は明けまで繰り下げる（破棄しない）。
-        // 規則 5 より後に置いてあるのは、繰り上げ結果が静穏時間に入り得るため。
-        // 逆順にすると、静穏時間が leadTime より短い設定
-        //（例: 13:00〜13:30 の昼寝）で `now + grace` が静穏時間内に落ちて鳴る。
+        // 繰り上げ（規則 3）より後に置くことが仕様。逆順にすると、
+        // 静穏時間が leadTime より短い設定（例: 13:00〜13:30 の昼寝）で
+        // `now + grace` が静穏時間内に落ちて鳴る。
         // 最後に繰り下げることで「静穏時間内に鳴らさない」が常に成り立つ。
+        //
+        // 就寝中に到来する事象（例: 03:00 の上昇）は、繰り下げ先が対象時刻を
+        // 追い越して規則 5 で落ちる。一方 23:00 の上昇は発火 21:30 が静穏時間の
+        // 外なので繰り下げが起きず、就寝前に予告できる。
+        // 「対象時刻が静穏時間内なら破棄」という規則を別に置くと後者まで消える。
         if let quietHours {
             guard let moved = quietHours.firstMomentOutside(fireDate, calendar: calendar) else {
                 return nil
@@ -187,10 +187,10 @@ public struct AlertScheduler: Sendable {
             fireDate = moved
         }
 
-        // 規則 6: リードタイムが残っていない通知は価値がない。
+        // 規則 5: リードタイムが残っていない通知は価値がない。
         guard fireDate < targetDate else { return nil }
 
         return ScheduledAlert(fireDate: fireDate, targetDate: targetDate,
-                              targetLevel: episode.peak.level, assessment: episode.peak)
+                              assessment: episode.peak)
     }
 }

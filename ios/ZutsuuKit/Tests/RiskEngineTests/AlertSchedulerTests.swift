@@ -24,7 +24,7 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution, .caution], startHour: 12)
         #expect(scheduler.schedule(curve, now: early, quietHours: nil) == [
             ScheduledAlert(fireDate: at(10, 12, 30), targetDate: at(10, 14),
-                           targetLevel: .caution, assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution))
         ])
     }
 
@@ -51,22 +51,27 @@ struct AlertSchedulerTests {
         #expect(scheduler.schedule(curve, now: at(10, 13), quietHours: nil).count == 1)
     }
 
-    // MARK: - 規則 2: 対象時刻が静穏時間内
+    // MARK: - 就寝中に到来するイベント
 
-    /// 就寝中に到来する事象は、警告できる瞬間が無い。
-    /// 規則 4 の繰り下げが「事後通知」を生まないのはこの規則があるため。
-    @Test("対象時刻が静穏時間内なら予約しない")
-    func dropsTargetInsideQuietHours() {
-        // 03:00 に注意へ上がる。
-        let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 1)
-        #expect(scheduler.schedule(curve, now: early, quietHours: night).isEmpty)
-        #expect(scheduler.schedule(curve, now: early, quietHours: nil).count == 1)
+    /// 23:00 の上昇は発火 21:30 が静穏時間の外。就寝前に予告できる。
+    /// 予防的な頭痛薬は早く飲むほど効くので、これは本アプリが送れる通知の中で
+    /// 最も価値の高い部類にあたる。
+    /// 「対象時刻が静穏時間内なら破棄」という規則を置くとこれが消える。
+    @Test("就寝中に到来するイベントも起床中に事前通知する")
+    func notifiesBeforeSleepForNightEvent() {
+        let curve = makeRiskCurve(levels: [.calm, .caution, .caution], startHour: 22)
+        #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
+            ScheduledAlert(fireDate: at(10, 21, 30), targetDate: at(10, 23),
+                           assessment: curveAssessment(.caution))
+        ])
     }
 
-    /// 発火時刻（21:30）は静穏時間の外だが、対象時刻（23:00）が中なので予約しない。
-    @Test("発火時刻が静穏時間外でも対象時刻が中なら予約しない")
-    func dropsNightTargetEvenWhenFireTimeIsOutside() {
-        let curve = makeRiskCurve(levels: [.calm, .caution, .caution], startHour: 22)
+    /// 深夜のイベントは、繰り下げ先（明けの 08:30）が対象時刻を追い越すので
+    /// 規則 5 で落ちる。破棄の判断は専用の規則ではなく繰り下げの結果から出る。
+    @Test("事前に知らせる術がない深夜のイベントは予約しない")
+    func dropsMidnightEventWithNoWayToWarnAhead() {
+        // 03:00 に注意へ上がる。素の発火 01:30 は静穏時間内。
+        let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 1)
         #expect(scheduler.schedule(curve, now: early, quietHours: night).isEmpty)
         #expect(scheduler.schedule(curve, now: early, quietHours: nil).count == 1)
     }
@@ -80,7 +85,7 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 7)
         #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
             ScheduledAlert(fireDate: at(10, 8, 30), targetDate: at(10, 9),
-                           targetLevel: .caution, assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution))
         ])
         // 静穏時間が無ければ本来のリードタイムどおり 07:30。
         #expect(scheduler.schedule(curve, now: early, quietHours: nil).first?.fireDate
@@ -106,7 +111,7 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 23)
         #expect(scheduler.schedule(curve, now: early, quietHours: lateNight) == [
             ScheduledAlert(fireDate: at(11, 0, 30), targetDate: at(11, 1),
-                           targetLevel: .caution, assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution))
         ])
     }
 
@@ -140,7 +145,7 @@ struct AlertSchedulerTests {
         let alerts = scheduler.schedule(curve, now: now, quietHours: nil)
         #expect(alerts == [
             ScheduledAlert(fireDate: at(10, 12, 1), targetDate: at(10, 13),
-                           targetLevel: .caution, assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution))
         ])
         let alert = try #require(alerts.first)
         #expect(alert.fireDate > now)
@@ -193,7 +198,7 @@ struct AlertSchedulerTests {
                                   startHour: 12)
         #expect(scheduler.schedule(curve, now: early, quietHours: nil) == [
             ScheduledAlert(fireDate: at(10, 12, 30), targetDate: at(10, 14),
-                           targetLevel: .danger, assessment: curveAssessment(.danger))
+                           assessment: curveAssessment(.danger))
         ])
     }
 
@@ -209,7 +214,6 @@ struct AlertSchedulerTests {
         #expect(alert.targetDate == at(10, 13))
         #expect(alert.assessment == curveAssessment(.danger))
         #expect(alert.assessment.score == 7)
-        #expect(alert.targetLevel == .danger)
     }
 
     @Test("閾値未満に落ちてから再び上がれば別の予約になる")
