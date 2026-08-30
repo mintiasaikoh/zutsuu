@@ -17,6 +17,46 @@ WeatherKit は iOS 専用で entitlement を要するため、エンジンから
 
 ---
 
+## 実施記録
+
+| バッチ | タスク | 状態 | コミット |
+|---|---|---|---|
+| A | Task 1-2 | 完了・レビュー承認済み | `13af292` `1de661a` `7af6963` |
+| B | Task 3-6 | 未着手 | |
+| C | Task 7-8 | 未着手 | |
+| D | Task 9-10 | 未着手 | |
+| E | Task 11-12 | 未着手 | |
+
+### Batch A のレビューで確定した変更
+
+以下は Task 1-2 の記述と実際のコードの差分。**下流のタスクはこちらが正**。
+
+1. **`RiskEngine` 名前空間 enum と `SmokeTests.swift` は削除した。**
+   `public enum RiskEngine` がモジュール名 `RiskEngine` を隠蔽し、`RiskEngine.WeatherPoint` が
+   モジュールではなく enum に解決されるため、モジュール修飾による名前衝突の回避が不可能になっていた。
+   アプリ層で `WeatherPoint` / `RiskLevel` が SwiftUI・WeatherKit の型名と衝突した際に詰む。
+
+2. **`RiskFactors` は `pressureChange`（0-8）と `pressureBaseline`（0-3）の 2 フィールドに分割した。**
+   `pressure` は両者の和を返す computed property。`total` の意味は不変。
+   設計書 §5.1 で絶対気圧項の意味が変わったため、UI が「急降下中」と「この土地としては低い」を
+   区別できる必要がある。合算後は分離不能。
+
+3. **`PressureChanges`（`oneHour` / `threeHour` / `sixHour`）を追加した。**
+   `compositeRisk` の引数に同型 Double が 8 個並ぶのを避けるため。
+
+4. **公開範囲の方針を確定した。**
+   スコアリングの自由関数は **internal**。public API は
+   ドメイン型・`PressureClimatology`・`RiskAnalyzer`・`AlertScheduler` のみ。
+   internal な関数のテストは `@testable import`、public 面のテストは素の `import` を使う。
+   素の import は `public` 付け忘れを検出するための仕掛けであり、実際に Batch A で
+   `PressureChanges` の init 漏れを検出した。
+
+5. **`WeatherPoint` の単位は `///` doc comment に `- Warning:` 付きで明記した。**
+   WeatherKit は湿度・降水確率を 0...1 で提供するがこの型は 0...100 を期待する。
+   範囲バリデーションは意図的に入れていない（設計書 §11.6 参照）。
+
+---
+
 ## この計画のスコープ
 
 **含む:** リスクスコアリング、時系列解析、寒暖差検知、通知予約時刻の算出（すべて純粋関数）
@@ -236,45 +276,63 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: ドメイン型を追加"
 **Files:**
 - Create: `ios/ZutsuuKit/Sources/RiskEngine/Scoring.swift`
 - Create: `ios/ZutsuuKit/Tests/RiskEngineTests/PressureChangeScoreTests.swift`
+- Modify: `ios/ZutsuuKit/Tests/RiskEngineTests/DomainTypeTests.swift`
 
 **Step 1: 失敗するテストを書く**
 
 境界値を必ず両側から突く。`>=` の実装ミスが最も出やすい箇所。
+スコアリング関数は internal なので `@testable import` を使う。
 
 ```swift
 import Testing
 @testable import RiskEngine
 
-@Test("1時間変化のスコア", arguments: [
-    (0.0, 0), (1.9, 0), (2.0, 1), (2.9, 1), (3.0, 2), (3.9, 2), (4.0, 3), (10.0, 3)
-])
-func pressureChange1h(change: Double, expected: Int) {
-    #expect(pressureChangeScore(change1h: change, change3h: 0, change6h: 0) == expected)
-}
+@Suite("気圧変化スコア")
+struct PressureChangeScoreTests {
 
-@Test("気圧上昇も下降と同じく評価される")
-func pressureChangeIsSymmetric() {
-    #expect(pressureChangeScore(change1h: 4, change3h: 0, change6h: 0)
-            == pressureChangeScore(change1h: -4, change3h: 0, change6h: 0))
-}
+    @Test("1時間変化のスコア", arguments: [
+        (0.0, 0), (1.9, 0), (2.0, 1), (2.9, 1), (3.0, 2), (3.9, 2), (4.0, 3), (10.0, 3)
+    ])
+    func oneHour(change: Double, expected: Int) {
+        let changes = PressureChanges(oneHour: change, threeHour: 0, sixHour: 0)
+        #expect(pressureChangeScore(changes) == expected)
+    }
 
-@Test("3時間変化のスコア", arguments: [
-    (3.9, 0), (4.0, 1), (6.0, 2), (8.0, 3)
-])
-func pressureChange3h(change: Double, expected: Int) {
-    #expect(pressureChangeScore(change1h: 0, change3h: change, change6h: 0) == expected)
-}
+    @Test("気圧上昇も下降と同じく評価される")
+    func symmetric() {
+        let falling = PressureChanges(oneHour: -4, threeHour: 0, sixHour: 0)
+        let rising = PressureChanges(oneHour: 4, threeHour: 0, sixHour: 0)
+        #expect(pressureChangeScore(falling) == pressureChangeScore(rising))
+    }
 
-@Test("6時間変化のスコア", arguments: [
-    (5.9, 0), (6.0, 1), (10.0, 2)
-])
-func pressureChange6h(change: Double, expected: Int) {
-    #expect(pressureChangeScore(change1h: 0, change3h: 0, change6h: change) == expected)
-}
+    @Test("3時間変化のスコア", arguments: [(3.9, 0), (4.0, 1), (6.0, 2), (8.0, 3)])
+    func threeHour(change: Double, expected: Int) {
+        #expect(pressureChangeScore(PressureChanges(oneHour: 0, threeHour: change, sixHour: 0)) == expected)
+    }
 
-@Test("3つの変化量は加算される（最大8pt）")
-func pressureChangeAccumulates() {
-    #expect(pressureChangeScore(change1h: -5, change3h: -9, change6h: -12) == 8)
+    @Test("6時間変化のスコア", arguments: [(5.9, 0), (6.0, 1), (10.0, 2)])
+    func sixHour(change: Double, expected: Int) {
+        #expect(pressureChangeScore(PressureChanges(oneHour: 0, threeHour: 0, sixHour: change)) == expected)
+    }
+
+    @Test("3つの変化量は加算される（最大8pt）")
+    func accumulates() {
+        #expect(pressureChangeScore(PressureChanges(oneHour: -5, threeHour: -9, sixHour: -12)) == 8)
+    }
+}
+```
+
+あわせて `DomainTypeTests.swift`（素の `import RiskEngine` のまま）に、
+`WeatherPoint` の public 面を実際に構築するテストを 1 件足す。
+現在この型はテストから一度も構築されておらず、`public` 付け忘れが検出できない状態になっている。
+
+```swift
+@Test("WeatherPointはモジュール外から構築できる")
+func weatherPointIsPubliclyConstructible() {
+    let point = WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,
+                             temperature: 20, humidity: 60,
+                             precipitationChance: 30, precipitationAmount: 0)
+    #expect(point.humidity == 60)
 }
 ```
 
@@ -293,20 +351,20 @@ import Foundation
 /// 気圧の変化量スコア（最大 8pt）。
 /// 変化量は標高・気候帯によらず同じ意味を持つため、固定閾値のままでよい。
 /// 上昇・下降のどちらでも症状が出るため絶対値で評価する。
-public func pressureChangeScore(change1h: Double, change3h: Double, change6h: Double) -> Int {
+func pressureChangeScore(_ changes: PressureChanges) -> Int {
     var score = 0
 
-    let abs1h = abs(change1h)
+    let abs1h = abs(changes.oneHour)
     if abs1h >= 4 { score += 3 }
     else if abs1h >= 3 { score += 2 }
     else if abs1h >= 2 { score += 1 }
 
-    let abs3h = abs(change3h)
+    let abs3h = abs(changes.threeHour)
     if abs3h >= 8 { score += 3 }
     else if abs3h >= 6 { score += 2 }
     else if abs3h >= 4 { score += 1 }
 
-    let abs6h = abs(change6h)
+    let abs6h = abs(changes.sixHour)
     if abs6h >= 10 { score += 2 }
     else if abs6h >= 6 { score += 1 }
 
@@ -335,40 +393,54 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 気圧変化スコアを実�
 - Create: `ios/ZutsuuKit/Sources/RiskEngine/PressureClimatology.swift`
 - Modify: `ios/ZutsuuKit/Sources/RiskEngine/Scoring.swift`
 - Create: `ios/ZutsuuKit/Tests/RiskEngineTests/AbsolutePressureScoreTests.swift`
+- Create: `ios/ZutsuuKit/Tests/RiskEngineTests/TestHelpers.swift`
 
 **Step 1: 失敗するテストを書く**
+
+`TestHelpers.swift`（以降のバッチでも使う）:
+
+```swift
+import Foundation
+@testable import RiskEngine
+
+struct StubClimatology: PressureClimatology {
+    let value: Double
+    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double {
+        value
+    }
+}
+```
+
+`AbsolutePressureScoreTests.swift`:
 
 ```swift
 import Testing
 @testable import RiskEngine
 
-@Test("パーセンタイルからスコアへの変換", arguments: [
-    (0.05, 3), (0.099, 3), (0.10, 2), (0.24, 2), (0.25, 1), (0.39, 1), (0.40, 0), (0.90, 0)
-])
-func absolutePressure(percentile: Double, expected: Int) {
-    #expect(absolutePressureScore(percentile: percentile) == expected)
-}
+@Suite("絶対気圧スコア")
+struct AbsolutePressureScoreTests {
 
-/// 設計書 §5.1 の破綻ケース。固定閾値では熱帯が常時アラートになっていた。
-@Test("熱帯の平常時の気圧はアラートにならない")
-func tropicalNormalPressureIsCalm() {
-    let climatology = StubClimatology(percentile: 0.50)
-    let p = climatology.percentile(pressure: 1008, latitude: 1.35, longitude: 103.8, month: 7)
-    #expect(absolutePressureScore(percentile: p) == 0)
-}
+    @Test("パーセンタイルからスコアへの変換", arguments: [
+        (0.05, 3), (0.099, 3), (0.10, 2), (0.24, 2), (0.25, 1), (0.39, 1), (0.40, 0), (0.90, 0)
+    ])
+    func conversion(percentile: Double, expected: Int) {
+        #expect(absolutePressureScore(percentile: percentile) == expected)
+    }
 
-/// 固定閾値では 1030hPa 常態の地域が永久に発火しなかった。
-@Test("高緯度内陸でも相対的に低ければ発火する")
-func highLatitudeRelativeLowFires() {
-    let climatology = StubClimatology(percentile: 0.05)
-    let p = climatology.percentile(pressure: 1015, latitude: 47.9, longitude: 106.9, month: 1)
-    #expect(absolutePressureScore(percentile: p) == 3)
-}
+    /// 設計書 §5.1 の破綻ケース。固定閾値では熱帯が常時アラートになっていた。
+    @Test("熱帯の平常時の気圧はアラートにならない")
+    func tropicalNormalIsCalm() {
+        let climatology = StubClimatology(value: 0.50)
+        let p = climatology.percentile(pressure: 1008, latitude: 1.35, longitude: 103.8, month: 7)
+        #expect(absolutePressureScore(percentile: p) == 0)
+    }
 
-struct StubClimatology: PressureClimatology {
-    let percentile: Double
-    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double {
-        percentile
+    /// 固定閾値では 1030hPa 常態の地域が永久に発火しなかった。
+    @Test("高緯度内陸でも相対的に低ければ発火する")
+    func highLatitudeRelativeLowFires() {
+        let climatology = StubClimatology(value: 0.05)
+        let p = climatology.percentile(pressure: 1015, latitude: 47.9, longitude: 106.9, month: 1)
+        #expect(absolutePressureScore(percentile: p) == 3)
     }
 }
 ```
@@ -380,7 +452,7 @@ Expected: FAIL（`cannot find 'absolutePressureScore' in scope`）
 
 **Step 3: 実装する**
 
-`PressureClimatology.swift`:
+`PressureClimatology.swift`（public。アプリ層が実装を注入するため）:
 
 ```swift
 /// 地点・月ごとの海面気圧の平年分布。
@@ -400,7 +472,7 @@ public protocol PressureClimatology: Sendable {
 /// 固定閾値ではなく地点別の分布上の位置で評価する。
 /// これにより熱帯での常時アラートと高緯度内陸での無発火を同時に解消する。
 /// 副次的に高標高地の問題も解決する（分布の相対位置は標高の影響を受けないため）。
-public func absolutePressureScore(percentile: Double) -> Int {
+func absolutePressureScore(percentile: Double) -> Int {
     if percentile < 0.10 { return 3 }
     if percentile < 0.25 { return 2 }
     if percentile < 0.40 { return 1 }
@@ -435,40 +507,38 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 絶対気圧をパーセン�
 import Testing
 @testable import RiskEngine
 
-@Test("湿度スコア", arguments: [
-    (74.0, 0), (75.0, 1), (84.0, 1), (85.0, 2), (100.0, 2)
-])
-func humidity(value: Double, expected: Int) {
-    #expect(humidityScore(humidity: value, change3h: 0) == expected)
-}
+@Suite("湿度・降水・気温スコア")
+struct OtherScoreTests {
 
-@Test("高湿度と気圧低下が重なるとボーナス1pt")
-func humidityPressureCombo() {
-    #expect(humidityScore(humidity: 80, change3h: -4) == 2)
-    #expect(humidityScore(humidity: 80, change3h: -3.9) == 1)  // 閾値未満
-    #expect(humidityScore(humidity: 74, change3h: -10) == 0)   // 湿度が足りない
-    #expect(humidityScore(humidity: 90, change3h: -5) == 3)    // 上限 3pt
-}
+    @Test("湿度スコア", arguments: [(74.0, 0), (75.0, 1), (84.0, 1), (85.0, 2), (100.0, 2)])
+    func humidity(value: Double, expected: Int) {
+        #expect(humidityScore(humidity: value, change3h: 0) == expected)
+    }
 
-@Test("降水スコア", arguments: [
-    (59.0, 0), (60.0, 1), (79.0, 1), (80.0, 2), (100.0, 2)
-])
-func precipitation(chance: Double, expected: Int) {
-    #expect(precipitationScore(chance: chance, amount: 0) == expected)
-}
+    @Test("高湿度と気圧低下が重なるとボーナス1pt")
+    func humidityPressureCombo() {
+        #expect(humidityScore(humidity: 80, change3h: -4) == 2)
+        #expect(humidityScore(humidity: 80, change3h: -3.9) == 1)  // 閾値未満
+        #expect(humidityScore(humidity: 74, change3h: -10) == 0)   // 湿度が足りない
+        #expect(humidityScore(humidity: 90, change3h: -5) == 3)    // 上限 3pt
+    }
 
-@Test("降水量が多いと加点されるが上限は2pt")
-func precipitationAmountBonus() {
-    #expect(precipitationScore(chance: 0, amount: 3) == 1)
-    #expect(precipitationScore(chance: 0, amount: 2) == 0)   // 2mm ちょうどは加点しない
-    #expect(precipitationScore(chance: 90, amount: 10) == 2) // 上限で頭打ち
-}
+    @Test("降水スコア", arguments: [(59.0, 0), (60.0, 1), (79.0, 1), (80.0, 2), (100.0, 2)])
+    func precipitation(chance: Double, expected: Int) {
+        #expect(precipitationScore(chance: chance, amount: 0) == expected)
+    }
 
-@Test("気温変動スコア", arguments: [
-    (0.0, 0), (4.9, 0), (5.0, 1), (7.9, 1), (8.0, 2), (-8.0, 2)
-])
-func temperature(change: Double, expected: Int) {
-    #expect(temperatureScore(change3h: change) == expected)
+    @Test("降水量が多いと加点されるが上限は2pt")
+    func precipitationAmountBonus() {
+        #expect(precipitationScore(chance: 0, amount: 3) == 1)
+        #expect(precipitationScore(chance: 0, amount: 2) == 0)   // 2mm ちょうどは加点しない
+        #expect(precipitationScore(chance: 90, amount: 10) == 2) // 上限で頭打ち
+    }
+
+    @Test("気温変動スコア", arguments: [(0.0, 0), (4.9, 0), (5.0, 1), (7.9, 1), (8.0, 2), (-8.0, 2)])
+    func temperature(change: Double, expected: Int) {
+        #expect(temperatureScore(change3h: change) == expected)
+    }
 }
 ```
 
@@ -483,7 +553,7 @@ Expected: FAIL（3 つの関数が未定義）
 
 ```swift
 /// 湿度スコア（最大 3pt）。高湿度と気圧低下が重なる場合にボーナスを加える。
-public func humidityScore(humidity: Double, change3h: Double) -> Int {
+func humidityScore(humidity: Double, change3h: Double) -> Int {
     var score = 0
     if humidity >= 85 { score += 2 }
     else if humidity >= 75 { score += 1 }
@@ -492,7 +562,7 @@ public func humidityScore(humidity: Double, change3h: Double) -> Int {
 }
 
 /// 降水スコア（最大 2pt）。
-public func precipitationScore(chance: Double, amount: Double) -> Int {
+func precipitationScore(chance: Double, amount: Double) -> Int {
     var score = 0
     if chance >= 80 { score += 2 }
     else if chance >= 60 { score += 1 }
@@ -501,7 +571,7 @@ public func precipitationScore(chance: Double, amount: Double) -> Int {
 }
 
 /// 気温変動スコア（最大 2pt）。3 時間以内の急変を評価する。
-public func temperatureScore(change3h: Double) -> Int {
+func temperatureScore(change3h: Double) -> Int {
     let change = abs(change3h)
     if change >= 8 { return 2 }
     if change >= 5 { return 1 }
@@ -536,40 +606,46 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 湿度・降水・気温ス�
 import Testing
 @testable import RiskEngine
 
-@Test("スコアからリスクレベルへの変換", arguments: [
-    (0, RiskLevel.calm), (1, .slight), (3, .slight),
-    (4, .caution), (6, .caution), (7, .danger), (13, .danger)
-])
-func levelConversion(score: Int, expected: RiskLevel) {
-    #expect(riskLevel(forScore: score) == expected)
-}
+@Suite("複合リスク")
+struct CompositeRiskTests {
 
-@Test("複合スコアは各要因の和になる")
-func compositeSumsFactors() {
-    let result = compositeRisk(
-        change1h: -4, change3h: -8, change6h: -10,
-        pressurePercentile: 0.05,
-        humidity: 90, precipitationChance: 90, precipitationAmount: 5,
-        temperatureChange3h: -8
-    )
-    #expect(result.factors.pressure == 11)      // 8 + 3
-    #expect(result.factors.humidity == 3)
-    #expect(result.factors.precipitation == 2)
-    #expect(result.factors.temperature == 2)
-    #expect(result.score == 18)                 // 設計上の最大値
-    #expect(result.level == .danger)
-}
+    @Test("スコアからリスクレベルへの変換", arguments: [
+        (0, RiskLevel.calm), (1, .slight), (3, .slight),
+        (4, .caution), (6, .caution), (7, .danger), (13, .danger)
+    ])
+    func levelConversion(score: Int, expected: RiskLevel) {
+        #expect(riskLevel(forScore: score) == expected)
+    }
 
-@Test("穏やかな条件では安心レベルになる")
-func calmConditions() {
-    let result = compositeRisk(
-        change1h: 0.5, change3h: 1, change6h: 1.5,
-        pressurePercentile: 0.6,
-        humidity: 50, precipitationChance: 10, precipitationAmount: 0,
-        temperatureChange3h: 1
-    )
-    #expect(result.score == 0)
-    #expect(result.level == .calm)
+    @Test("複合スコアは各要因の和になる")
+    func sumsFactors() {
+        let result = compositeRisk(
+            pressureChanges: PressureChanges(oneHour: -4, threeHour: -8, sixHour: -10),
+            pressurePercentile: 0.05,
+            humidity: 90, precipitationChance: 90, precipitationAmount: 5,
+            temperatureChange3h: -8
+        )
+        #expect(result.factors.pressureChange == 8)
+        #expect(result.factors.pressureBaseline == 3)
+        #expect(result.factors.pressure == 11)      // 分割前と同じ値になること
+        #expect(result.factors.humidity == 3)
+        #expect(result.factors.precipitation == 2)
+        #expect(result.factors.temperature == 2)
+        #expect(result.score == 18)                 // 設計上の最大値
+        #expect(result.level == .danger)
+    }
+
+    @Test("穏やかな条件では安心レベルになる")
+    func calmConditions() {
+        let result = compositeRisk(
+            pressureChanges: PressureChanges(oneHour: 0.5, threeHour: 1, sixHour: 1.5),
+            pressurePercentile: 0.6,
+            humidity: 50, precipitationChance: 10, precipitationAmount: 0,
+            temperatureChange3h: 1
+        )
+        #expect(result.score == 0)
+        #expect(result.level == .calm)
+    }
 }
 ```
 
@@ -583,14 +659,15 @@ Expected: FAIL（`cannot find 'compositeRisk' in scope`）
 `CompositeRisk.swift`:
 
 ```swift
+/// リスク判定の結果。`HourlyRisk` 経由でアプリ層へ公開される。
 public struct RiskAssessment: Sendable, Equatable {
     public let level: RiskLevel
     public let score: Int
     public let factors: RiskFactors
 }
 
-/// スコアからリスクレベルへの変換。閾値は src/index.ts:184-187 に一致させている。
-public func riskLevel(forScore score: Int) -> RiskLevel {
+/// スコアからリスクレベルへの変換。閾値は src/index.ts の computeCompositeRisk に一致させている。
+func riskLevel(forScore score: Int) -> RiskLevel {
     if score >= 7 { return .danger }
     if score >= 4 { return .caution }
     if score >= 1 { return .slight }
@@ -599,16 +676,16 @@ public func riskLevel(forScore score: Int) -> RiskLevel {
 
 /// 複合リスクスコア（最大 18pt）。
 /// 気圧 11pt ＋ 湿度 3pt ＋ 降水 2pt ＋ 気温変動 2pt。
-public func compositeRisk(
-    change1h: Double, change3h: Double, change6h: Double,
+func compositeRisk(
+    pressureChanges: PressureChanges,
     pressurePercentile: Double,
     humidity: Double, precipitationChance: Double, precipitationAmount: Double,
     temperatureChange3h: Double
 ) -> RiskAssessment {
     let factors = RiskFactors(
-        pressure: pressureChangeScore(change1h: change1h, change3h: change3h, change6h: change6h)
-            + absolutePressureScore(percentile: pressurePercentile),
-        humidity: humidityScore(humidity: humidity, change3h: change3h),
+        pressureChange: pressureChangeScore(pressureChanges),
+        pressureBaseline: absolutePressureScore(percentile: pressurePercentile),
+        humidity: humidityScore(humidity: humidity, change3h: pressureChanges.threeHour),
         precipitation: precipitationScore(chance: precipitationChance, amount: precipitationAmount),
         temperature: temperatureScore(change3h: temperatureChange3h)
     )
@@ -617,6 +694,8 @@ public func compositeRisk(
                           factors: factors)
 }
 ```
+
+`RiskAssessment` は public だが memberwise init は internal のままでよい（エンジン内部でのみ生成する）。
 
 **Step 4: テストが通ることを確認**
 
@@ -637,50 +716,67 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 複合スコアとレベル�
 
 **Files:**
 - Create: `ios/ZutsuuKit/Sources/RiskEngine/PressureChange.swift`
+- Modify: `ios/ZutsuuKit/Tests/RiskEngineTests/TestHelpers.swift`
 - Create: `ios/ZutsuuKit/Tests/RiskEngineTests/PressureChangeTests.swift`
 
 **Step 1: 失敗するテストを書く**
 
 配列の先頭付近では過去のデータが足りない。ここの扱いを明示的にテストする。
 
+`TestHelpers.swift` に追記:
+
+```swift
+func makeSeries(pressures: [Double], temperatures: [Double]? = nil) -> [WeatherPoint] {
+    let base = Date(timeIntervalSince1970: 0)
+    return pressures.enumerated().map { index, pressure in
+        WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
+                     pressure: pressure,
+                     temperature: temperatures?[index] ?? 20,
+                     humidity: 50, precipitationChance: 0, precipitationAmount: 0)
+    }
+}
+```
+
+`PressureChangeTests.swift`:
+
 ```swift
 import Testing
 import Foundation
 @testable import RiskEngine
 
-private func makeSeries(_ pressures: [Double]) -> [WeatherPoint] {
-    let base = Date(timeIntervalSince1970: 0)
-    return pressures.enumerated().map { index, pressure in
-        WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
-                     pressure: pressure, temperature: 20, humidity: 50,
-                     precipitationChance: 0, precipitationAmount: 0)
+@Suite("時系列の変化量")
+struct PressureChangeTests {
+
+    @Test("N時間前との差を取る")
+    func overHours() {
+        let series = makeSeries(pressures: [1010, 1008, 1006, 1004, 1002, 1000, 998])
+        #expect(pressureChange(series, at: 6, hoursAgo: 1) == -2)
+        #expect(pressureChange(series, at: 6, hoursAgo: 3) == -6)
+        #expect(pressureChange(series, at: 6, hoursAgo: 6) == -12)
     }
-}
 
-@Test("N時間前との差を取る")
-func changeOverHours() {
-    let series = makeSeries([1010, 1008, 1006, 1004, 1002, 1000, 998])
-    #expect(pressureChange(series, at: 6, hoursAgo: 1) == -2)
-    #expect(pressureChange(series, at: 6, hoursAgo: 3) == -6)
-    #expect(pressureChange(series, at: 6, hoursAgo: 6) == -12)
-}
-
-@Test("過去データが足りない場合は0を返す")
-func changeWithInsufficientHistory() {
-    let series = makeSeries([1010, 1008, 1006])
-    #expect(pressureChange(series, at: 0, hoursAgo: 1) == 0)
-    #expect(pressureChange(series, at: 2, hoursAgo: 6) == 0)
-}
-
-@Test("気温の変化量も同じ規則で取れる")
-func temperatureChangeOverHours() {
-    let base = Date(timeIntervalSince1970: 0)
-    let series = (0..<4).map { index in
-        WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
-                     pressure: 1013, temperature: 10 + Double(index) * 3,
-                     humidity: 50, precipitationChance: 0, precipitationAmount: 0)
+    @Test("過去データが足りない場合は0を返す")
+    func insufficientHistory() {
+        let series = makeSeries(pressures: [1010, 1008, 1006])
+        #expect(pressureChange(series, at: 0, hoursAgo: 1) == 0)
+        #expect(pressureChange(series, at: 2, hoursAgo: 6) == 0)
     }
-    #expect(temperatureChange(series, at: 3, hoursAgo: 3) == 9)
+
+    @Test("気温の変化量も同じ規則で取れる")
+    func temperature() {
+        let series = makeSeries(pressures: [1013, 1013, 1013, 1013],
+                                temperatures: [10, 13, 16, 19])
+        #expect(temperatureChange(series, at: 3, hoursAgo: 3) == 9)
+    }
+
+    @Test("3つの時間窓をまとめて取れる")
+    func aggregate() {
+        let series = makeSeries(pressures: [1010, 1008, 1006, 1004, 1002, 1000, 998])
+        let changes = pressureChanges(series, at: 6)
+        #expect(changes.oneHour == -2)
+        #expect(changes.threeHour == -6)
+        #expect(changes.sixHour == -12)
+    }
 }
 ```
 
@@ -701,12 +797,19 @@ import Foundation
 /// 過去データが足りない場合は 0（＝変化なし扱い）を返す。
 /// これは安全側の挙動：データ不足を「急変」と誤判定して外れ通知を出すより、
 /// 発火しないほうが信頼を損なわない。
-public func pressureChange(_ series: [WeatherPoint], at index: Int, hoursAgo: Int) -> Double {
+func pressureChange(_ series: [WeatherPoint], at index: Int, hoursAgo: Int) -> Double {
     change(series, at: index, hoursAgo: hoursAgo) { $0.pressure }
 }
 
-public func temperatureChange(_ series: [WeatherPoint], at index: Int, hoursAgo: Int) -> Double {
+func temperatureChange(_ series: [WeatherPoint], at index: Int, hoursAgo: Int) -> Double {
     change(series, at: index, hoursAgo: hoursAgo) { $0.temperature }
+}
+
+/// スコアリングが必要とする 3 つの時間窓をまとめて取る。
+func pressureChanges(_ series: [WeatherPoint], at index: Int) -> PressureChanges {
+    PressureChanges(oneHour: pressureChange(series, at: index, hoursAgo: 1),
+                    threeHour: pressureChange(series, at: index, hoursAgo: 3),
+                    sixHour: pressureChange(series, at: index, hoursAgo: 6))
 }
 
 private func change(_ series: [WeatherPoint], at index: Int, hoursAgo: Int,
@@ -738,41 +841,48 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 時系列からの変化量�
 
 **Step 1: 失敗するテストを書く**
 
+`RiskAnalyzer` は public API なので、**素の `import RiskEngine`** でテストする。
+これにより `public` の付け忘れを検出できる。
+
 ```swift
 import Testing
 import Foundation
-@testable import RiskEngine
+import RiskEngine
 
-@Test("各時刻のリスクが算出される")
-func analyzeProducesOnePerPoint() {
-    let series = makeCalmSeries(hours: 24)
-    let analyzer = RiskAnalyzer(climatology: StubClimatology(percentile: 0.5),
-                                latitude: 35.7, longitude: 139.6)
-    let result = analyzer.analyze(series)
-    #expect(result.count == 24)
-    #expect(result.allSatisfy { $0.assessment.level == .calm })
-}
+@Suite("時系列リスク解析")
+struct RiskAnalyzerTests {
 
-@Test("気圧が急降下する区間でリスクが上がる")
-func analyzeDetectsPressureDrop() {
-    var pressures = [Double](repeating: 1013, count: 12)
-    pressures += stride(from: 1011.0, through: 995.0, by: -2.0)  // 急降下
-    let series = makeSeries(pressures: pressures)
-    let analyzer = RiskAnalyzer(climatology: StubClimatology(percentile: 0.5),
-                                latitude: 35.7, longitude: 139.6)
-    let result = analyzer.analyze(series)
-    #expect(result.last!.assessment.level >= .caution)
-}
+    @Test("各時刻のリスクが算出される")
+    func onePerPoint() {
+        let series = makeSeries(pressures: Array(repeating: 1013, count: 24))
+        let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
+                                    latitude: 35.7, longitude: 139.6)
+        let result = analyzer.analyze(series)
+        #expect(result.count == 24)
+        #expect(result.allSatisfy { $0.assessment.level == .calm })
+    }
 
-@Test("空の系列を渡しても落ちない")
-func analyzeEmptySeries() {
-    let analyzer = RiskAnalyzer(climatology: StubClimatology(percentile: 0.5),
-                                latitude: 0, longitude: 0)
-    #expect(analyzer.analyze([]).isEmpty)
+    @Test("気圧が急降下する区間でリスクが上がる")
+    func detectsPressureDrop() {
+        var pressures = [Double](repeating: 1013, count: 12)
+        pressures += stride(from: 1011.0, through: 995.0, by: -2.0)
+        let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
+                                    latitude: 35.7, longitude: 139.6)
+        let result = analyzer.analyze(makeSeries(pressures: pressures))
+        #expect(result.last!.assessment.level >= .caution)
+    }
+
+    @Test("空の系列を渡しても落ちない")
+    func emptySeries() {
+        let analyzer = RiskAnalyzer(climatology: StubClimatology(value: 0.5),
+                                    latitude: 0, longitude: 0)
+        #expect(analyzer.analyze([]).isEmpty)
+    }
 }
 ```
 
-ヘルパは `Tests/RiskEngineTests/TestHelpers.swift` へ切り出す（Task 7 の `makeSeries` もここへ移す）。
+`StubClimatology` と `makeSeries` は `TestHelpers.swift` にあるが、
+そちらは `@testable import` を使っている。同一テストモジュール内なので参照できる。
 
 **Step 2: 失敗を確認**
 
@@ -789,9 +899,7 @@ import Foundation
 public struct HourlyRisk: Sendable, Equatable {
     public let point: WeatherPoint
     public let assessment: RiskAssessment
-    public let pressureChange1h: Double
-    public let pressureChange3h: Double
-    public let pressureChange6h: Double
+    public let pressureChanges: PressureChanges
 }
 
 public struct RiskAnalyzer: Sendable {
@@ -812,13 +920,11 @@ public struct RiskAnalyzer: Sendable {
     public func analyze(_ series: [WeatherPoint]) -> [HourlyRisk] {
         series.indices.map { index in
             let point = series[index]
-            let change1h = pressureChange(series, at: index, hoursAgo: 1)
-            let change3h = pressureChange(series, at: index, hoursAgo: 3)
-            let change6h = pressureChange(series, at: index, hoursAgo: 6)
+            let changes = pressureChanges(series, at: index)
             let month = calendar.component(.month, from: point.date)
 
             let assessment = compositeRisk(
-                change1h: change1h, change3h: change3h, change6h: change6h,
+                pressureChanges: changes,
                 pressurePercentile: climatology.percentile(
                     pressure: point.pressure,
                     latitude: latitude, longitude: longitude, month: month),
@@ -828,14 +934,14 @@ public struct RiskAnalyzer: Sendable {
                 temperatureChange3h: temperatureChange(series, at: index, hoursAgo: 3)
             )
 
-            return HourlyRisk(point: point, assessment: assessment,
-                              pressureChange1h: change1h,
-                              pressureChange3h: change3h,
-                              pressureChange6h: change6h)
+            return HourlyRisk(point: point, assessment: assessment, pressureChanges: changes)
         }
     }
 }
 ```
+
+`HourlyRisk` の memberwise init は internal のままでよい（エンジン内部でのみ生成する）。
+ただし素の import でテストするため、**プロパティと型自体は public が必須**。
 
 **Step 4: テストが通ることを確認**
 
@@ -1113,7 +1219,7 @@ func parityWithTypeScript(change1h: Double, change3h: Double, change6h: Double,
                           humidity: Double, chance: Double, amount: Double,
                           tempChange: Double, expectedScore: Int) {
     let result = compositeRisk(
-        change1h: change1h, change3h: change3h, change6h: change6h,
+        pressureChanges: PressureChanges(oneHour: change1h, threeHour: change3h, sixHour: change6h),
         pressurePercentile: 0.5,
         humidity: humidity, precipitationChance: chance, precipitationAmount: amount,
         temperatureChange3h: tempChange
@@ -1150,15 +1256,31 @@ Expected: 全 PASS、失敗 0 件
 Run: `cd ios/ZutsuuKit && swift build -Xswiftc -warnings-as-errors`
 Expected: 成功
 
-**Step 3: `SPEC.md` のリスク段階の記述を修正**
+**Step 3: リスク段階の記述を修正**
 
-`SPEC.md` の「リスクレベル変換」表が 5 段階になっているが、実装は 4 段階。
-実装に合わせて表を修正し、設計書 §2 と整合させる。
+`SPEC.md` の「リスクレベル変換」表と `CLAUDE.md` の同等の記述がどちらも 5 段階になっているが、
+実装は 4 段階。両方を実装に合わせて修正し、設計書 §2 と整合させる。
 
-**Step 4: コミット**
+**Step 4: 繰り越した Minor 指摘を処理する**
+
+Batch A のレビューで Task 12 へ繰り越した項目。
+
+- **M7:** `Codable` / `Hashable` の準拠方針を決める。設計書 §3 の ForecastStore（予報キャッシュ）と
+  LogStore が SwiftData を使うため、型が少ない今のうちに決めておく
+- **M8:** `Package.swift` に `swiftLanguageModes: [.v6]` を明示する。
+  tools-version 6.2 の既定で現在は v6 だが、明示すれば tools-version 変更時の暗黙の退行を防げる
+- **M9:** `.github/workflows/` に Swift パッケージ用のジョブを追加する。
+  現状は Node の LINE 版ジョブ 2 本しかなく、完了条件の `swift test` がローカル限定の保証になっている。
+  `macos-latest` で `swift test` と `swift build -Xswiftc -warnings-as-errors` を回す
+- **M10:** watchOS ビルドの検証。Batch A 時点では Xcode の watchOS プラットフォームコンポーネントが
+  未インストールで検証できなかった。インストール後に
+  `xcodebuild -scheme RiskEngine -destination 'generic/platform=watchOS'` が通ることを確認し、
+  本計画冒頭の「確認済み環境」の記述を実測に合わせて修正する
+
+**Step 5: コミット**
 
 ```bash
-git add -A && git commit -m "RiskEngine: SPEC.md のリスク段階の記述を実装に合わせる"
+git add -A && git commit -m "RiskEngine: 仕上げ（ドキュメント整合・CI・繰り越し指摘）"
 ```
 
 ---
