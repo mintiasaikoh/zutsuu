@@ -4,11 +4,25 @@ import Foundation
 /// RiskEngine が WeatherKit に依存しないための境界。
 public struct WeatherPoint: Sendable, Equatable {
     public let date: Date
-    public let pressure: Double            // hPa（海面気圧）
-    public let temperature: Double         // ℃
-    public let humidity: Double            // %（0〜100）
-    public let precipitationChance: Double // %（0〜100）
-    public let precipitationAmount: Double // mm
+
+    /// 海面気圧（hPa）
+    public let pressure: Double
+
+    /// 気温（℃）
+    public let temperature: Double
+
+    /// 相対湿度（%、0〜100）。
+    /// - Warning: WeatherKit の `humidity` は 0...1 の割合で提供されるため、
+    ///   アダプタ側で 100 倍してから渡すこと。
+    public let humidity: Double
+
+    /// 降水確率（%、0〜100）。
+    /// - Warning: WeatherKit の `precipitationChance` は 0...1 の割合で提供されるため、
+    ///   アダプタ側で 100 倍してから渡すこと。
+    public let precipitationChance: Double
+
+    /// 降水量（mm）
+    public let precipitationAmount: Double
 
     public init(date: Date, pressure: Double, temperature: Double,
                 humidity: Double, precipitationChance: Double, precipitationAmount: Double) {
