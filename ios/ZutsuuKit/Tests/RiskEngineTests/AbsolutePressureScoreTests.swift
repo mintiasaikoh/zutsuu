@@ -27,18 +27,30 @@ struct AbsolutePressureScoreTests {
         #expect(absolutePressureScore(percentile: p) == 3)
     }
 
-    @Test("範囲外のパーセンタイルは 0.0〜1.0 に丸められる")
-    func outOfRangeIsClamped() {
+    /// clamp が有るか無いかでは結果が変わらない（閾値が全て片側 `<` のため）。
+    /// このテストが固定しているのは clamp の実装ではなく、
+    /// 「範囲外入力でも定義済みのスコアを返す」という関数の全域性。
+    @Test("範囲外のパーセンタイルでも定義されたスコアを返す")
+    func outOfRangeStillReturnsDefinedScore() {
         #expect(absolutePressureScore(percentile: -0.5) == 3)
         #expect(absolutePressureScore(percentile: 1.5) == 0)
     }
 
-    /// 非有限値は Plan 6 の実装バグ。デバッグでは `assertionFailure` で停止し、
-    /// リリースでは 0 を返して通知が静かに止まらないようにする。
+    // 非有限値は Plan 6 の実装バグ。デバッグでは `assertionFailure` で停止させ、
+    // リリースではコンパイルされて消えるため 0 を返す。契約が構成ごとに異なるので
+    // テストも分ける（SwiftPM が debug ビルドで DEBUG を定義する）。
+    #if DEBUG
     @Test("非有限値はデバッグビルドで検出される")
     func nonFiniteIsCaughtInDebug() async {
         await #expect(processExitsWith: .failure) {
             _ = absolutePressureScore(percentile: .nan)
         }
     }
+    #else
+    @Test("非有限値はリリースビルドで 0 を返す")
+    func nonFiniteReturnsZeroInRelease() {
+        #expect(absolutePressureScore(percentile: .nan) == 0)
+        #expect(absolutePressureScore(percentile: .infinity) == 0)
+    }
+    #endif
 }
