@@ -474,12 +474,28 @@ public protocol PressureClimatology: Sendable {
 /// これにより熱帯での常時アラートと高緯度内陸での無発火を同時に解消する。
 /// 副次的に高標高地の問題も解決する（分布の相対位置は標高の影響を受けないため）。
 func absolutePressureScore(percentile: Double) -> Int {
-    if percentile < 0.10 { return 3 }
-    if percentile < 0.25 { return 2 }
-    if percentile < 0.40 { return 1 }
+    guard percentile.isFinite else {
+        assertionFailure("percentile が有限値でない: \(percentile)")
+        return 0
+    }
+    let clamped = min(max(percentile, 0), 1)
+    if clamped < 0.10 { return 3 }
+    if clamped < 0.25 { return 2 }
+    if clamped < 0.40 { return 1 }
     return 0
 }
 ```
+
+**記録の訂正:** クランプ行は現時点では全ての有限 `Double` に対して **no-op** である。
+閾値がすべて片側 `<` のため、負値は元から `< 0.10` に落ち、1 を超える値は元から素通りして 0 を返す。
+有限値 4,000,019 点（各閾値の `nextDown`、`±greatestFiniteMagnitude`、`-0.0` を含む）の
+全数掃引で差分ゼロを確認済み。**クランプを「テストで守られた防御」として数えてはならない。**
+
+実際に効いているのは `isFinite` ガードのみである。修正前は `.nan` が静かに 0 を返し、
+気圧要因が恒久的に 0 になって通知が止まる状態だった。
+
+クランプ自体は残す。no-op である性質は「全閾値が片側 `<` であること」に依存しており、
+これは安定した前提ではない。高気圧側のルール（例 `if clamped > 0.90`）を足した瞬間に効き始める。
 
 **Step 4: テストが通ることを確認**
 
@@ -518,10 +534,10 @@ struct OtherScoreTests {
 
     @Test("高湿度と気圧低下が重なるとボーナス1pt")
     func humidityPressureCombo() {
-        #expect(humidityScore(humidity: 80, change3h: -4) == 2)
-        #expect(humidityScore(humidity: 80, change3h: -3.9) == 1)  // 閾値未満
-        #expect(humidityScore(humidity: 74, change3h: -10) == 0)   // 湿度が足りない
-        #expect(humidityScore(humidity: 90, change3h: -5) == 3)    // 上限 3pt
+        #expect(humidityScore(humidity: 80, pressureChange3h: -4) == 2)
+        #expect(humidityScore(humidity: 80, pressureChange3h: -3.9) == 1)  // 閾値未満
+        #expect(humidityScore(humidity: 74, pressureChange3h: -10) == 0)   // 湿度が足りない
+        #expect(humidityScore(humidity: 90, pressureChange3h: -5) == 3)    // 上限 3pt
     }
 
     @Test("降水スコア", arguments: [(59.0, 0), (60.0, 1), (79.0, 1), (80.0, 2), (100.0, 2)])
@@ -538,7 +554,7 @@ struct OtherScoreTests {
 
     @Test("気温変動スコア", arguments: [(0.0, 0), (4.9, 0), (5.0, 1), (7.9, 1), (8.0, 2), (-8.0, 2)])
     func temperature(change: Double, expected: Int) {
-        #expect(temperatureScore(change3h: change) == expected)
+        #expect(temperatureScore(temperatureChange3h: change) == expected)
     }
 }
 ```
