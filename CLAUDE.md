@@ -28,8 +28,8 @@ gh workflow run check.yml
 3. **isMorningBriefingTime()** - 朝の予報時間帯（8:30〜10:00）判定
 4. **fetchWithRetry()** - API取得（3回リトライ）
 5. **fetchWeatherForecast()** - Open-Meteo APIから気象予報取得（気圧・気温・湿度・降水、昨日〜3日後）
-7. **fetchJmaPops()** - 気象庁APIから降水確率を取得し、Open-Meteoの値を上書き（日本国内限定）
 6. **computeCompositeRisk()** - 気圧・湿度・降水・気温変動の複合スコアでリスクレベルを算出
+7. **fetchJmaPops()** - 気象庁APIから降水確率を取得し、Open-Meteoの値を上書き（日本国内限定）
 8. **analyzeRisk()** - 今後24時間の毎時リスクを分析
 9. **detectTemperatureSwing()** - 前日比の最高気温差（5℃以上）を検知
 10. **buildAdvice()** - リスク要因に応じた具体的アドバイスを生成
