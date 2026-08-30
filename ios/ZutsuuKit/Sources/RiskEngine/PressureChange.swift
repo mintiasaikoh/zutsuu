@@ -1,5 +1,3 @@
-import Foundation
-
 /// index から hoursAhead 時間先との気圧差。
 /// 系列が 1 時間刻みであることを前提とする。
 ///

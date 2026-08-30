@@ -11,12 +11,23 @@ struct StubClimatology: PressureClimatology {
 }
 
 func makeSeries(pressures: [Double], temperatures: [Double]? = nil,
+                humidity: Double = 50,
+                precipitationChance: Double = 0,
+                precipitationAmount: Double = 0,
                 start base: Date = Date(timeIntervalSince1970: 0)) -> [WeatherPoint] {
+    if let temperatures {
+        precondition(temperatures.count == pressures.count,
+                     """
+                     temperatures は pressures と同じ要素数にすること                      (pressures: \(pressures.count), temperatures: \(temperatures.count))
+                     """)
+    }
     return pressures.enumerated().map { index, pressure in
         WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
                      pressure: pressure,
                      temperature: temperatures?[index] ?? 20,
-                     humidity: 50, precipitationChance: 0, precipitationAmount: 0)
+                     humidity: humidity,
+                     precipitationChance: precipitationChance,
+                     precipitationAmount: precipitationAmount)
     }
 }
 

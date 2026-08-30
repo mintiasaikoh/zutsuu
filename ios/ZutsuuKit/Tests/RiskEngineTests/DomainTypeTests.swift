@@ -42,6 +42,24 @@ struct DomainTypeTests {
         #expect(c.sixHour == -6.5)
     }
 
+    /// Task 10 の `AlertSchedulerTests` と Plan 3 のプレビューは、
+    /// 予報を経由せず合成のリスク曲線を組み立てる。素の import で構築できることを固定する。
+    @Test("リスク曲線はモジュール外から合成できる")
+    func riskCurveIsSyntheticallyConstructible() {
+        let assessment = RiskAssessment(
+            level: .caution, score: 5,
+            factors: RiskFactors(pressureChange: 5, pressureBaseline: 0,
+                                 humidity: 0, precipitation: 0, temperature: 0))
+        let risk = HourlyRisk(
+            point: WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,
+                                temperature: 20, humidity: 50,
+                                precipitationChance: 0, precipitationAmount: 0),
+            assessment: assessment,
+            pressureChanges: PressureChanges(oneHour: -2, threeHour: -6, sixHour: -12))
+        #expect(risk.assessment.level == .caution)
+        #expect(risk.pressureChanges.sixHour == -12)
+    }
+
     @Test("WeatherPointはモジュール外から構築できる")
     func weatherPointIsPubliclyConstructible() {
         let point = WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,
