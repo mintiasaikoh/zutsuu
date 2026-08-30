@@ -64,25 +64,27 @@ func makeRiskCurve(levels: [RiskLevel],
                    day: Date = utcDate(year: 2026, month: 3, day: 10)) -> [HourlyRisk] {
     let base = day.addingTimeInterval(TimeInterval(startHour) * 3600)
     return levels.enumerated().map { index, level in
-        let score = representativeScore(for: level)
-        return HourlyRisk(
+        HourlyRisk(
             point: WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
                                 pressure: 1013, temperature: 20, humidity: 50,
                                 precipitationChance: 0, precipitationAmount: 0),
-            assessment: RiskAssessment(
-                level: level, score: score,
-                factors: RiskFactors(pressureChange: score, pressureBaseline: 0,
-                                     humidity: 0, precipitation: 0, temperature: 0)),
+            assessment: curveAssessment(level),
             pressureChanges: PressureChanges(oneHour: 0, threeHour: 0, sixHour: 0))
     }
 }
 
-/// そのレベルになる代表的なスコア。CompositeRisk.swift の閾値と対応させている。
-private func representativeScore(for level: RiskLevel) -> Int {
-    switch level {
-    case .calm: 0
+/// `makeRiskCurve` が各レベルに与える判定。
+/// レベルごとにスコアが違うので、`ScheduledAlert` がどの時点の判定を
+/// 抱えているかを外側から見分けられる。
+func curveAssessment(_ level: RiskLevel) -> RiskAssessment {
+    // CompositeRisk.swift の閾値に対応する代表的なスコア。
+    let score = switch level {
+    case RiskLevel.calm: 0
     case .slight: 1
     case .caution: 4
     case .danger: 7
     }
+    return RiskAssessment(level: level, score: score,
+                          factors: RiskFactors(pressureChange: score, pressureBaseline: 0,
+                                               humidity: 0, precipitation: 0, temperature: 0))
 }
