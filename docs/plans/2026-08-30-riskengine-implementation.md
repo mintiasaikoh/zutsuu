@@ -11,7 +11,8 @@ WeatherKit は iOS 専用で entitlement を要するため、エンジンから
 
 **Tech Stack:** Swift 6.2 / Swift Package Manager / Swift Testing（`import Testing`）
 
-**確認済み環境:** Xcode 26.3、Swift 6.2.4、iOS SDK 26.2、watchOS SDK 26.2
+**確認済み環境:** Xcode 26.3、Swift 6.2.4。`swift test`（macOS ネイティブ）、
+`xcodebuild -destination 'generic/platform=iOS'`、`generic/platform=watchOS` のいずれもビルド成功を実測済み。
 
 **参照:** [設計書](2026-08-30-global-ios-app-design.md) §5（グローバル対応）、移植元は `src/index.ts:136-190`
 
@@ -22,7 +23,7 @@ WeatherKit は iOS 専用で entitlement を要するため、エンジンから
 | バッチ | タスク | 状態 | コミット |
 |---|---|---|---|
 | A | Task 1-2 | 完了・レビュー承認済み | `13af292` `1de661a` `7af6963` |
-| B | Task 3-6 | 未着手 | |
+| B | Task 3-6 | 完了・レビュー承認済み | `630b61c` `2873b08` `9a07f21` `d9764de` |
 | C | Task 7-8 | 未着手 | |
 | D | Task 9-10 | 未着手 | |
 | E | Task 11-12 | 未着手 | |
@@ -512,7 +513,7 @@ struct OtherScoreTests {
 
     @Test("湿度スコア", arguments: [(74.0, 0), (75.0, 1), (84.0, 1), (85.0, 2), (100.0, 2)])
     func humidity(value: Double, expected: Int) {
-        #expect(humidityScore(humidity: value, change3h: 0) == expected)
+        #expect(humidityScore(humidity: value, pressureChange3h: 0) == expected)
     }
 
     @Test("高湿度と気圧低下が重なるとボーナス1pt")
@@ -553,11 +554,13 @@ Expected: FAIL（3 つの関数が未定義）
 
 ```swift
 /// 湿度スコア（最大 3pt）。高湿度と気圧低下が重なる場合にボーナスを加える。
-func humidityScore(humidity: Double, change3h: Double) -> Int {
+/// ラベルを `pressureChange3h` としているのは、気温の 3 時間変化との取り違えを防ぐため。
+/// 型もラベルも同じだと Task 8 で両者が同一スコープに入った際、誤りが型検査を素通りする。
+func humidityScore(humidity: Double, pressureChange3h: Double) -> Int {
     var score = 0
     if humidity >= 85 { score += 2 }
     else if humidity >= 75 { score += 1 }
-    if humidity >= 75 && change3h <= -4 { score += 1 }
+    if humidity >= 75 && pressureChange3h <= -4 { score += 1 }
     return score
 }
 
@@ -571,8 +574,8 @@ func precipitationScore(chance: Double, amount: Double) -> Int {
 }
 
 /// 気温変動スコア（最大 2pt）。3 時間以内の急変を評価する。
-func temperatureScore(change3h: Double) -> Int {
-    let change = abs(change3h)
+func temperatureScore(temperatureChange3h: Double) -> Int {
+    let change = abs(temperatureChange3h)
     if change >= 8 { return 2 }
     if change >= 5 { return 1 }
     return 0
@@ -685,9 +688,9 @@ func compositeRisk(
     let factors = RiskFactors(
         pressureChange: pressureChangeScore(pressureChanges),
         pressureBaseline: absolutePressureScore(percentile: pressurePercentile),
-        humidity: humidityScore(humidity: humidity, change3h: pressureChanges.threeHour),
+        humidity: humidityScore(humidity: humidity, pressureChange3h: pressureChanges.threeHour),
         precipitation: precipitationScore(chance: precipitationChance, amount: precipitationAmount),
-        temperature: temperatureScore(change3h: temperatureChange3h)
+        temperature: temperatureScore(temperatureChange3h: temperatureChange3h)
     )
     return RiskAssessment(level: riskLevel(forScore: factors.total),
                           score: factors.total,
@@ -881,8 +884,13 @@ struct RiskAnalyzerTests {
 }
 ```
 
-`StubClimatology` と `makeSeries` は `TestHelpers.swift` にあるが、
-そちらは `@testable import` を使っている。同一テストモジュール内なので参照できる。
+`makeSeries` は `TestHelpers.swift` にある。同一テストモジュール内なので参照できる。
+
+**`StubClimatology` を引数記録型に拡張すること。** 現在の実装は入力を捨てて定数を返すため、
+`RiskAnalyzer` が `latitude` / `longitude` / `month` を正しく引き渡しているかを検証できない。
+特に `calendar.component(.month, from: point.date)` の取り違えが素通りする。
+最後に渡された引数を記録するか、クロージャを受け取る形にして、
+「1月のデータには month=1 が渡る」ことを検証するテストを追加する。
 
 **Step 2: 失敗を確認**
 
@@ -1272,10 +1280,9 @@ Batch A のレビューで Task 12 へ繰り越した項目。
 - **M9:** `.github/workflows/` に Swift パッケージ用のジョブを追加する。
   現状は Node の LINE 版ジョブ 2 本しかなく、完了条件の `swift test` がローカル限定の保証になっている。
   `macos-latest` で `swift test` と `swift build -Xswiftc -warnings-as-errors` を回す
-- **M10:** watchOS ビルドの検証。Batch A 時点では Xcode の watchOS プラットフォームコンポーネントが
-  未インストールで検証できなかった。インストール後に
-  `xcodebuild -scheme RiskEngine -destination 'generic/platform=watchOS'` が通ることを確認し、
-  本計画冒頭の「確認済み環境」の記述を実測に合わせて修正する
+- **M10:** 解決済み。watchOS プラットフォームコンポーネントのインストール後、
+  `xcodebuild build -scheme ZutsuuKit -destination 'generic/platform=watchOS'` の成功を実測で確認した。
+  スキーム名は `RiskEngine` ではなく `ZutsuuKit`（パッケージ名）である点に注意
 
 **Step 5: コミット**
 
