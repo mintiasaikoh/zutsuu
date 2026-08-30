@@ -33,3 +33,29 @@ func absolutePressureScore(percentile: Double) -> Int {
     if percentile < 0.40 { return 1 }
     return 0
 }
+
+/// 湿度スコア（最大 3pt）。高湿度と気圧低下が重なる場合にボーナスを加える。
+func humidityScore(humidity: Double, change3h: Double) -> Int {
+    var score = 0
+    if humidity >= 85 { score += 2 }
+    else if humidity >= 75 { score += 1 }
+    if humidity >= 75 && change3h <= -4 { score += 1 }
+    return score
+}
+
+/// 降水スコア（最大 2pt）。
+func precipitationScore(chance: Double, amount: Double) -> Int {
+    var score = 0
+    if chance >= 80 { score += 2 }
+    else if chance >= 60 { score += 1 }
+    if amount > 2 && score < 2 { score += 1 }
+    return score
+}
+
+/// 気温変動スコア（最大 2pt）。3 時間以内の急変を評価する。
+func temperatureScore(change3h: Double) -> Int {
+    let change = abs(change3h)
+    if change >= 8 { return 2 }
+    if change >= 5 { return 1 }
+    return 0
+}
