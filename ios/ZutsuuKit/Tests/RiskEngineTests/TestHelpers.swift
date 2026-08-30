@@ -61,18 +61,43 @@ func utcDate(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0) ->
 /// 気象データからスコアを算出させるより並びを直接書くほうが意図が読める。
 /// 日付は UTC 固定。壁時計時刻に依存する静穏時間の判定を、
 /// 実行環境のタイムゾーンから切り離すため。
+///
+/// `factors` を渡すと各点の内訳を個別に差し替えられる。既定では同じレベルの点が
+/// 全て同一の判定を持つため、「エピソード中のどの時点の判定を採るか」を
+/// 見分けられない。スコアの推移が意味を持つテストはこちらを使う。
+/// `level` と `factors[index].total` の整合は呼び出し側の責任
+/// （`riskLevel(forScore:)` は internal なのでここからは確かめられない）。
 func makeRiskCurve(levels: [RiskLevel],
+                   factors: [RiskFactors]? = nil,
                    startHour: Int = 12,
                    day: Date = utcDate(year: 2026, month: 3, day: 10)) -> [HourlyRisk] {
+    if let factors {
+        precondition(factors.count == levels.count,
+                     """
+                     factors は levels と同じ要素数にすること                      (levels: \(levels.count), factors: \(factors.count))
+                     """)
+    }
     let base = day.addingTimeInterval(TimeInterval(startHour) * 3600)
     return levels.enumerated().map { index, level in
-        HourlyRisk(
+        let assessment = factors.map {
+            RiskAssessment(level: level, score: $0[index].total, factors: $0[index])
+        } ?? curveAssessment(level)
+        return HourlyRisk(
             point: WeatherPoint(date: base.addingTimeInterval(TimeInterval(index) * 3600),
                                 pressure: 1013, temperature: 20, humidity: 50,
                                 precipitationChance: 0, precipitationAmount: 0),
-            assessment: curveAssessment(level),
+            assessment: assessment,
             pressureChanges: PressureChanges(oneHour: 0, threeHour: 0, sixHour: 0))
     }
+}
+
+/// 合計が `total` になる内訳を、指定した要因に寄せて作る。
+/// どの要因が効いているかを内訳で見分けられるようにするためのテスト用ヘルパー。
+func curveFactors(pressureChange: Int = 0, pressureBaseline: Int = 0,
+                  humidity: Int = 0, precipitation: Int = 0,
+                  temperature: Int = 0) -> RiskFactors {
+    RiskFactors(pressureChange: pressureChange, pressureBaseline: pressureBaseline,
+                humidity: humidity, precipitation: precipitation, temperature: temperature)
 }
 
 /// `makeRiskCurve` が各レベルに与える判定。

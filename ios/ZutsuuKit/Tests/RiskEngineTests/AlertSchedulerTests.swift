@@ -152,6 +152,43 @@ struct AlertSchedulerTests {
         #expect(alert.fireDate == now.addingTimeInterval(AlertScheduler.grace))
     }
 
+    /// 素の発火時刻が `now` ちょうどの境界。
+    /// `ScheduledAlert` は「アプリ層が時刻を再検査しなくてよい」と約束しており、
+    /// その約束はこの比較が等号を含むことに乗っている。等号を落とすと
+    /// `fireDate == now` の予約が返り、`UNTimeIntervalNotificationTrigger` が
+    /// 間隔 0 で例外を投げる。
+    @Test("素の発火時刻が現在時刻ちょうどでも繰り上げる")
+    func clampsFireTimeAtExactlyNow() throws {
+        let now = at(10, 11, 30)    // 対象 13:00 のリードタイム 90 分ちょうど手前
+        let curve = makeRiskCurve(levels: [.calm, .caution], startHour: 12)
+        let alert = try #require(scheduler.schedule(curve, now: now, quietHours: nil).first)
+        #expect(alert.fireDate > now)
+        #expect(alert.fireDate == now.addingTimeInterval(AlertScheduler.grace))
+    }
+
+    /// 曲線に対する `now` の位置を 1 分刻みで動かし、返る予約が常に未来を指すことを見る。
+    /// 個別の境界ではなく不変条件として固定する。
+    @Test("どの現在時刻に対しても発火時刻は現在より後になる")
+    func fireDateIsAlwaysAfterNow() {
+        let curve = makeRiskCurve(levels: [.calm, .calm, .caution, .caution,
+                                           .calm, .danger, .danger],
+                                  startHour: 12)
+        let configurations: [QuietHours?] = [nil, night]
+        for quietHours in configurations {
+            var scheduled = 0
+            for minute in stride(from: -120, through: 420, by: 1) {
+                let now = at(10, 12).addingTimeInterval(TimeInterval(minute) * 60)
+                for alert in scheduler.schedule(curve, now: now, quietHours: quietHours) {
+                    scheduled += 1
+                    #expect(alert.fireDate > now,
+                            "now=\(now) fireDate=\(alert.fireDate)")
+                }
+            }
+            // 1 件も返らなければ上の表明は空振り。件数そのものを下から押さえる。
+            #expect(scheduled > 300)
+        }
+    }
+
     /// 繰り上げ先が静穏時間内に落ちてはいけない。
     /// 静穏時間がリードタイムより短い設定（13:00〜13:30 の昼寝）では、
     /// 繰り上げてから繰り下げないと静穏時間の最中に鳴る。
@@ -214,6 +251,44 @@ struct AlertSchedulerTests {
         #expect(alert.targetDate == at(10, 13))
         #expect(alert.assessment == curveAssessment(.danger))
         #expect(alert.assessment.score == 7)
+    }
+
+    /// 同じ「危険」の中でもスコアは動く。通知本文が名乗る内訳は、
+    /// 最初に危険へ到達した時点ではなく、区間中で最も強い時点のもの。
+    /// 7pt → 15pt → 8pt の停滞で 7pt を選ぶと、事象全体で最も弱い内訳を読み上げる。
+    @Test("エピソード中で最もスコアの高い時点の判定を持つ")
+    func carriesHighestScoringAssessment() throws {
+        let onset = curveFactors(pressureChange: 7)                             // 7pt
+        let peak = curveFactors(pressureChange: 8, pressureBaseline: 3,
+                                humidity: 3, precipitation: 1)                  // 15pt
+        let subsiding = curveFactors(pressureChange: 4, pressureBaseline: 1,
+                                     humidity: 2, temperature: 1)               // 8pt
+        let curve = makeRiskCurve(levels: [.calm, .danger, .danger, .danger],
+                                  factors: [curveFactors(), onset, peak, subsiding],
+                                  startHour: 12)
+        let alerts = scheduler.schedule(curve, now: early, quietHours: nil)
+        #expect(alerts.count == 1)
+        let alert = try #require(alerts.first)
+        #expect(alert.assessment.factors == peak)
+        #expect(alert.assessment.score == 15)
+        // レベルは最高スコアの時点から導出しても最高レベルのまま。
+        #expect(alert.targetLevel == .danger)
+        // 対象時刻はピークの位置（14:00）ではなくエピソードの入口。
+        #expect(alert.targetDate == at(10, 13))
+        #expect(alert.fireDate == at(10, 11, 30))
+    }
+
+    /// 同点なら早いほうを残す。後勝ちにすると、同じ強さの停滞で
+    /// 通知が抱える内訳が区間の長さに左右される。
+    @Test("同点のスコアでは最も早い時点の判定を持つ")
+    func keepsEarliestAssessmentOnTie() throws {
+        let pressureDriven = curveFactors(pressureChange: 7)                    // 7pt
+        let humidityDriven = curveFactors(pressureChange: 4, humidity: 3)       // 7pt
+        let curve = makeRiskCurve(levels: [.calm, .danger, .danger],
+                                  factors: [curveFactors(), pressureDriven, humidityDriven],
+                                  startHour: 12)
+        let alert = try #require(scheduler.schedule(curve, now: early, quietHours: nil).first)
+        #expect(alert.assessment.factors == pressureDriven)
     }
 
     @Test("閾値未満に落ちてから再び上がれば別の予約になる")

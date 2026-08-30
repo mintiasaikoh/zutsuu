@@ -140,12 +140,18 @@ struct RiskAnalyzerTests {
 
     /// 3 時間先との気温差が渡ることを、時刻ごとに違う値で固定する。
     /// 定数（0 など）に差し替えると内訳が一律になり、この表明が落ちる。
+    ///
+    /// 窓の深さも同時に固定する。午前に昇温し 6 時間先で寒冷前線が入る系列にすることで、
+    /// 各時刻の 3h 窓と 6h 窓の答えが食い違う（例: index 0 は 3h で +9℃、6h で 0℃）。
+    /// 平坦な系列だと両窓が同じ値になり、`hoursAhead: 6` に書き換えても通ってしまう。
+    /// 関数名 `temperatureChange3h` ではなくテストで深さを固定するための配置。
     @Test("各時刻の3時間先との気温差が渡される")
     func passesTemperatureChange() {
         let series = makeSeries(pressures: Array(repeating: 1013, count: 10),
-                                temperatures: [10, 13, 16, 19, 19, 19, 19, 19, 19, 19])
+                                temperatures: [10, 13, 15, 19, 20, 20, 10, 10, 10, 10])
         let result = analyzer().analyze(series)
-        #expect(result.map(\.assessment.factors.temperature) == [2, 1, 0, 0])
+        // 3h 窓: [+9, +7, +5, -9]。6h 窓なら [0, -3, -5, -9] で内訳が変わる。
+        #expect(result.map(\.assessment.factors.temperature) == [2, 1, 1, 2])
     }
 
     @Test("各時刻の気圧変化量が結果に含まれる")

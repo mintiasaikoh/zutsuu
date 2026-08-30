@@ -27,6 +27,9 @@ struct OtherScoreTests {
         #expect(precipitationScore(chance: 0, amount: 3) == 1)
         #expect(precipitationScore(chance: 0, amount: 2) == 0)      // 2mm ちょうどは加点しない
         #expect(precipitationScore(chance: 90, amount: 10) == 2)    // 上限で頭打ち
+        // 確率で 1pt 取っている状態からの加点。上限判定が `score < 1` だとここが 1pt になる。
+        #expect(precipitationScore(chance: 60, amount: 3) == 2)
+        #expect(precipitationScore(chance: 79, amount: 3) == 2)
     }
 
     @Test("気温変動スコア", arguments: [(0.0, 0), (4.9, 0), (5.0, 1), (7.9, 1), (8.0, 2), (-8.0, 2)])

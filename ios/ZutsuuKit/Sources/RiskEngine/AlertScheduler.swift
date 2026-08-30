@@ -64,12 +64,19 @@ public struct ScheduledAlert: Sendable, Equatable {
     public let fireDate: Date
     /// リスクが閾値を超える時刻（エピソードの入口）。通知本文の「何時から」。
     public let targetDate: Date
-    /// 最高レベルに最初に到達した時点の判定。
+    /// エピソード中で最もスコアの高い時点の判定。同点なら最も早い時点。
     /// 通知本文で要因（気圧・湿度・気温）を出し分けるために持たせている。
+    ///
+    /// 「最高レベルに最初に到達した時点」ではなく最高スコアの時点を採る。
+    /// 危険が 7pt → 15pt → 8pt と推移する停滞では、前者は 7pt の内訳、
+    /// つまり事象全体で最も弱い内訳を通知本文に読み上げてしまう。
+    /// 知らせる価値があるのは最も強く効いている時点の内訳のほう。
     public let assessment: RiskAssessment
 
     /// エピソード中に到達する最高レベル。
     /// `assessment` から導出する。二重に持つと食い違い得るため格納しない。
+    /// スコアが高い時点のレベルが低くなることはない（変換は単調）ので、
+    /// 最高スコアの判定を持つことと最高レベルを名乗ることは両立する。
     public var targetLevel: RiskLevel { assessment.level }
 
     public init(fireDate: Date, targetDate: Date, assessment: RiskAssessment) {
@@ -103,7 +110,8 @@ public struct AlertScheduler: Sendable {
     ///
     /// 閾値以上が続く区間を 1 つのエピソードとして扱い、1 件だけ通知する。
     /// 上昇のたびに拾うと、1 回の荒天で「注意」「危険」と連投になる。
-    /// エピソードの入口を `targetDate`、区間中の最高レベルを `targetLevel` とする。
+    /// エピソードの入口を `targetDate`、区間中の最高スコアの判定を `assessment` とし、
+    /// `targetLevel` はそこから導出する（＝区間中の最高レベル）。
     /// 途中で悪化する場合に最初から最高レベルを名乗ることになるが、
     /// 通知の役目は早く動いてもらうことなので、控えめに言うより良いと判断した。
     /// 詳細は画面側で読める。
@@ -122,7 +130,7 @@ public struct AlertScheduler: Sendable {
     private struct Episode {
         /// 閾値を最初に超えた時刻。リードタイムはここから逆算する。
         let onsetDate: Date
-        /// 区間中の最高レベルに最初に到達した時点の判定。
+        /// 区間中で最もスコアの高い時点の判定。同点なら最も早い時点。
         var peak: RiskAssessment
         /// 閾値未満から上がって入った区間か。曲線の先頭から始まる区間は false。
         let isRise: Bool
@@ -140,7 +148,8 @@ public struct AlertScheduler: Sendable {
                 continue
             }
             if var episode = current {
-                if assessment.level > episode.peak.level { episode.peak = assessment }
+                // 同点は更新しない。同じ強さなら早い時点の内訳を残す。
+                if assessment.score > episode.peak.score { episode.peak = assessment }
                 current = episode
             } else {
                 current = Episode(onsetDate: risk.point.date,
