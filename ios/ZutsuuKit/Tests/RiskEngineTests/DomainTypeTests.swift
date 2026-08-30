@@ -41,4 +41,12 @@ struct DomainTypeTests {
         #expect(c.threeHour == -4.0)
         #expect(c.sixHour == -6.5)
     }
+
+    @Test("WeatherPointはモジュール外から構築できる")
+    func weatherPointIsPubliclyConstructible() {
+        let point = WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,
+                                 temperature: 20, humidity: 60,
+                                 precipitationChance: 30, precipitationAmount: 0)
+        #expect(point.humidity == 60)
+    }
 }
