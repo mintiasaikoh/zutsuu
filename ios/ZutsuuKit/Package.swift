@@ -13,5 +13,10 @@ let package = Package(
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
         .testTarget(name: "RiskEngineTests", dependencies: ["RiskEngine"])
-    ]
+    ],
+    // tools-version 6.2 の既定と同じだが、明示しておくことで
+    // tools-version を下げた際に言語モードが黙って v5 へ戻るのを防ぐ。
+    // `swiftLanguageModes` はターゲットではなくパッケージ単位の指定で、
+    // テストターゲットにも同じモードが掛かる。
+    swiftLanguageModes: [.v6]
 )

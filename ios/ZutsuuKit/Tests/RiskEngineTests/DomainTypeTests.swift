@@ -60,6 +60,43 @@ struct DomainTypeTests {
         #expect(risk.pressureChanges.sixHour == -12)
     }
 
+    @Test("座標は緯度と経度を保持する")
+    func coordinateKeepsComponents() {
+        let c = Coordinate(latitude: 35.7, longitude: 139.6)
+        #expect(c.latitude == 35.7)
+        #expect(c.longitude == 139.6)
+        #expect(c != Coordinate(latitude: 139.6, longitude: 35.7))
+    }
+
+    /// 集合・辞書キーとしての利用と SwiftUI の差分検出のため（Plan 2・Plan 3）。
+    @Test("純粋な値型は Hashable")
+    func valueTypesAreHashable() {
+        let point = WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,
+                                 temperature: 20, humidity: 50,
+                                 precipitationChance: 0, precipitationAmount: 0)
+        let factors = RiskFactors(pressureChange: 1, pressureBaseline: 0,
+                                  humidity: 0, precipitation: 0, temperature: 0)
+        let assessment = RiskAssessment(level: .slight, score: 1, factors: factors)
+        let changes = PressureChanges(oneHour: -1, threeHour: -2, sixHour: -3)
+        let swing = TemperatureSwing(todayMax: 20, yesterdayMax: 14)
+
+        #expect(Set([point, point]).count == 1)
+        #expect(Set([factors, factors]).count == 1)
+        #expect(Set([assessment, assessment]).count == 1)
+        #expect(Set([changes, changes]).count == 1)
+        #expect(Set([swing, swing]).count == 1)
+        #expect(Set(RiskLevel.allCases).count == 4)
+        #expect(Set([Coordinate(latitude: 35.7, longitude: 139.6)]).count == 1)
+    }
+
+    /// SwiftUI の `List` / `ForEach` が使う識別子（Plan 3）。
+    @Test("時刻ごとのリスクは時刻で識別される")
+    func hourlyRiskIsIdentifiedByDate() {
+        let curve = makeRiskCurve(levels: [.calm, .slight, .caution])
+        #expect(curve.map(\.id) == curve.map(\.point.date))
+        #expect(Set(curve.map(\.id)).count == 3)
+    }
+
     @Test("WeatherPointはモジュール外から構築できる")
     func weatherPointIsPubliclyConstructible() {
         let point = WeatherPoint(date: Date(timeIntervalSince1970: 0), pressure: 1013,

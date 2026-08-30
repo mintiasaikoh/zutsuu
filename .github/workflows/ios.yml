@@ -1,0 +1,35 @@
+name: RiskEngine（Swift パッケージ）
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    working-directory: ios/ZutsuuKit
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ランナー既定の Xcode が最新とは限らない。Package.swift は
+      # swift-tools-version 6.2 を要求するので、入っている中で最も新しいものを選ぶ。
+      - name: Select newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          swift --version
+
+      # ローカルでは treatAllWarnings(as: .error) が効くが、
+      # テストターゲットには掛かっていないため -Xswiftc で全体に掛ける。
+      - name: Build (warnings as errors)
+        run: swift build -Xswiftc -warnings-as-errors
+
+      - name: Test (debug)
+        run: swift test
+
+      # release でのみ落ちる差異が過去に一度発生している（#if DEBUG の扱い）。
+      # 両構成を回す。
+      - name: Test (release)
+        run: swift test -c release

@@ -15,7 +15,9 @@ struct AbsolutePressureScoreTests {
     @Test("熱帯の平常時の気圧はアラートにならない")
     func tropicalNormalIsCalm() {
         let climatology = StubClimatology(value: 0.50)
-        let p = climatology.percentile(pressure: 1008, latitude: 1.35, longitude: 103.8, month: 7)
+        let p = climatology.percentile(pressure: 1008,
+                                       coordinate: Coordinate(latitude: 1.35, longitude: 103.8),
+                                       month: 7)
         #expect(absolutePressureScore(percentile: p) == 0)
     }
 
@@ -23,7 +25,9 @@ struct AbsolutePressureScoreTests {
     @Test("高緯度内陸でも相対的に低ければ発火する")
     func highLatitudeRelativeLowFires() {
         let climatology = StubClimatology(value: 0.05)
-        let p = climatology.percentile(pressure: 1015, latitude: 47.9, longitude: 106.9, month: 1)
+        let p = climatology.percentile(pressure: 1015,
+                                       coordinate: Coordinate(latitude: 47.9, longitude: 106.9),
+                                       month: 1)
         #expect(absolutePressureScore(percentile: p) == 3)
     }
 

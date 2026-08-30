@@ -7,7 +7,7 @@ struct RiskAnalyzerTests {
 
     private func analyzer(_ climatology: any PressureClimatology = StubClimatology(value: 0.5),
                           calendar: Calendar = .current) -> RiskAnalyzer {
-        RiskAnalyzer(climatology: climatology, latitude: 35.7, longitude: 139.6, calendar: calendar)
+        RiskAnalyzer(climatology: climatology, coordinate: tokyo, calendar: calendar)
     }
 
     @Test("各時刻のリスクが算出される")
@@ -81,12 +81,12 @@ struct RiskAnalyzerTests {
     // MARK: - スコアリングへの引数の受け渡し
     //
     // `RiskAnalyzer` が各引数を正しい仮引数に渡しているかを、要因ごとの内訳で観測する。
-    // 取り違え（緯度経度の入れ替え、湿度と降水確率の入れ替え、`.month` の取り違え、
+    // 取り違え（湿度と降水確率の入れ替え、`.month` の取り違え、
     // 別の時刻の値を渡す等）が起きると、対応する factors の値が変わる。
 
     /// 1 月のときだけ「その土地としては低い」を返す。
     private func januaryOnly() -> ClosureClimatology {
-        ClosureClimatology { _, _, _, month in month == 1 ? 0.05 : 0.5 }
+        ClosureClimatology { _, _, month in month == 1 ? 0.05 : 0.5 }
     }
 
     private func baselines(_ result: [HourlyRisk]) -> [Int] {
@@ -107,10 +107,12 @@ struct RiskAnalyzerTests {
         #expect(baselines(analyzer(januaryOnly(), calendar: utcCalendar).analyze(july)) == [0, 0, 0, 0])
     }
 
-    @Test("緯度と経度が入れ替わらずに渡される")
-    func passesCoordinates() {
-        let tokyoOnly = ClosureClimatology { _, latitude, longitude, _ in
-            (latitude == 35.7 && longitude == 139.6) ? 0.05 : 0.5
+    /// 緯度経度の入れ替えは `Coordinate` により型で表現不可能になったため、
+    /// ここで固定するのは「渡した座標がそのまま平年分布に届く」ことだけ。
+    @Test("座標がそのまま平年分布に渡される")
+    func passesCoordinate() {
+        let tokyoOnly = ClosureClimatology { _, coordinate, _ in
+            coordinate == tokyo ? 0.05 : 0.5
         }
         let series = makeSeries(pressures: Array(repeating: 1013, count: 10))
         #expect(baselines(analyzer(tokyoOnly).analyze(series)) == [3, 3, 3, 3])
@@ -118,7 +120,7 @@ struct RiskAnalyzerTests {
 
     @Test("各時刻の気圧がその時刻の判定に渡される")
     func passesPressureOfEachPoint() {
-        let lowOnly = ClosureClimatology { pressure, _, _, _ in pressure == 980 ? 0.05 : 0.5 }
+        let lowOnly = ClosureClimatology { pressure, _, _ in pressure == 980 ? 0.05 : 0.5 }
         var pressures = [Double](repeating: 1013, count: 10)
         pressures[2] = 980
         #expect(baselines(analyzer(lowOnly).analyze(makeSeries(pressures: pressures))) == [0, 0, 3, 0])

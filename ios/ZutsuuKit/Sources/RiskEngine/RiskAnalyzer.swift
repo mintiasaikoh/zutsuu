@@ -3,10 +3,15 @@ import Foundation
 /// 1 時刻分のリスク判定結果。
 /// 通常はエンジンが算出するが、SwiftUI プレビューやテストが合成のリスク曲線を
 /// 組み立てられるよう init も公開している。
-public struct HourlyRisk: Sendable, Equatable {
+public struct HourlyRisk: Sendable, Equatable, Identifiable {
     public let point: WeatherPoint
     public let assessment: RiskAssessment
     public let pressureChanges: PressureChanges
+
+    /// SwiftUI の `List` / `ForEach` 用の識別子（Plan 3）。
+    /// 1 本のリスク曲線の中で時刻は一意（`RiskAnalyzer.analyze` は 1 時間刻みの
+    /// 系列をそのまま写す）なので、時刻がそのまま識別子になる。
+    public var id: Date { point.date }
 
     public init(point: WeatherPoint, assessment: RiskAssessment, pressureChanges: PressureChanges) {
         self.point = point
@@ -16,21 +21,27 @@ public struct HourlyRisk: Sendable, Equatable {
 }
 
 /// 時系列全体にスコアリングを適用してリスク曲線を作る。
+///
+/// - Important: 解析のたびに新しく生成すること。長寿命の依存として保持してはいけない。
+///   `Calendar` は値型なので、生成した時点のタイムゾーンを写し取って固定する。
+///   本アプリは移動するユーザーを想定した全世界向けであり、設計書 §5.2 は
+///   端末ローカル時刻での判定を要求している。生成したまま持ち回ると、
+///   ユーザーがタイムゾーンをまたいだ後も古いタイムゾーンで月を読み続け、
+///   月境界の前後で平年分布の参照月がずれる。
+///   同じ理由が `AlertScheduler`（静穏時間の壁時計判定）にも当てはまる。
 public struct RiskAnalyzer: Sendable {
     /// 前方窓の最大深さ（時間）。この時間ぶんの末尾は完全な窓が取れない。
     public static let lookaheadHours = 6
 
     private let climatology: any PressureClimatology
-    private let latitude: Double
-    private let longitude: Double
+    private let coordinate: Coordinate
     private let calendar: Calendar
 
     public init(climatology: any PressureClimatology,
-                latitude: Double, longitude: Double,
+                coordinate: Coordinate,
                 calendar: Calendar = .current) {
         self.climatology = climatology
-        self.latitude = latitude
-        self.longitude = longitude
+        self.coordinate = coordinate
         self.calendar = calendar
     }
 
@@ -54,8 +65,7 @@ public struct RiskAnalyzer: Sendable {
             let assessment = compositeRisk(
                 pressureChanges: changes,
                 pressurePercentile: climatology.percentile(
-                    pressure: point.pressure,
-                    latitude: latitude, longitude: longitude, month: month),
+                    pressure: point.pressure, coordinate: coordinate, month: month),
                 humidity: point.humidity,
                 precipitationChance: point.precipitationChance,
                 precipitationAmount: point.precipitationAmount,

@@ -2,7 +2,7 @@ import Foundation
 
 /// 気象データの中立表現。アプリ層が WeatherKit から変換して渡す。
 /// RiskEngine が WeatherKit に依存しないための境界。
-public struct WeatherPoint: Sendable, Equatable {
+public struct WeatherPoint: Sendable, Hashable {
     public let date: Date
 
     /// 海面気圧（hPa）

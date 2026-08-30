@@ -4,7 +4,7 @@
 /// 移植元の `diff` は絶対値だったが、ここでは符号を残す。
 /// 「暖かくなる」「冷え込む」でアドバイス文面が変わるため、
 /// 判定側だけが絶対値を取る形にしている。
-public struct TemperatureSwing: Sendable, Equatable {
+public struct TemperatureSwing: Sendable, Hashable {
     /// 注意報を出す前日比（℃）。
     public static let threshold: Double = 5
 

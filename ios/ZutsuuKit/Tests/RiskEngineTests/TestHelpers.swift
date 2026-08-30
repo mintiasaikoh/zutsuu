@@ -5,7 +5,7 @@ import RiskEngine
 /// ここを素の `import` にしておくことで、`public` の付け忘れをビルドが検出する。
 struct StubClimatology: PressureClimatology {
     let value: Double
-    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double {
+    func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double {
         value
     }
 }
@@ -32,15 +32,17 @@ func makeSeries(pressures: [Double], temperatures: [Double]? = nil,
 }
 
 /// 引数を観測できる `PressureClimatology`。
-/// `RiskAnalyzer` が緯度・経度・月・気圧をそのまま渡しているかを外側から固定するために使う。
+/// `RiskAnalyzer` が座標・月・気圧をそのまま渡しているかを外側から固定するために使う。
 /// クロージャを保持するだけなので可変状態を持たず、`Sendable` 要件と衝突しない。
 struct ClosureClimatology: PressureClimatology {
-    let body: @Sendable (_ pressure: Double, _ latitude: Double,
-                         _ longitude: Double, _ month: Int) -> Double
-    func percentile(pressure: Double, latitude: Double, longitude: Double, month: Int) -> Double {
-        body(pressure, latitude, longitude, month)
+    let body: @Sendable (_ pressure: Double, _ coordinate: Coordinate, _ month: Int) -> Double
+    func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double {
+        body(pressure, coordinate, month)
     }
 }
+
+/// テストで使う代表地点（練馬区）。
+let tokyo = Coordinate(latitude: 35.7, longitude: 139.6)
 
 let utcCalendar: Calendar = {
     var calendar = Calendar(identifier: .gregorian)

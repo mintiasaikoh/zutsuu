@@ -1,5 +1,5 @@
 /// 複合リスクスコアの内訳。
-public struct RiskFactors: Sendable, Equatable {
+public struct RiskFactors: Sendable, Hashable {
     /// 気圧の変化量スコア（0〜8）。「急降下中」を表す。
     public let pressureChange: Int
     /// その土地としての気圧の低さスコア（0〜3）。「この土地としては低い気圧」を表す。
