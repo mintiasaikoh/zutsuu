@@ -19,12 +19,12 @@ struct PressureChangeScoreTests {
         #expect(pressureChangeScore(falling) == pressureChangeScore(rising))
     }
 
-    @Test("3時間変化のスコア", arguments: [(3.9, 0), (4.0, 1), (6.0, 2), (8.0, 3)])
+    @Test("3時間変化のスコア", arguments: [(3.9, 0), (4.0, 1), (5.9, 1), (6.0, 2), (7.9, 2), (8.0, 3)])
     func threeHour(change: Double, expected: Int) {
         #expect(pressureChangeScore(PressureChanges(oneHour: 0, threeHour: change, sixHour: 0)) == expected)
     }
 
-    @Test("6時間変化のスコア", arguments: [(5.9, 0), (6.0, 1), (10.0, 2)])
+    @Test("6時間変化のスコア", arguments: [(5.9, 0), (6.0, 1), (9.9, 1), (10.0, 2)])
     func sixHour(change: Double, expected: Int) {
         #expect(pressureChangeScore(PressureChanges(oneHour: 0, threeHour: 0, sixHour: change)) == expected)
     }

@@ -1,10 +1,3 @@
-/// リスク判定の結果。`HourlyRisk` 経由でアプリ層へ公開される。
-public struct RiskAssessment: Sendable, Equatable {
-    public let level: RiskLevel
-    public let score: Int
-    public let factors: RiskFactors
-}
-
 /// スコアからリスクレベルへの変換。閾値は src/index.ts の computeCompositeRisk に一致させている。
 func riskLevel(forScore score: Int) -> RiskLevel {
     if score >= 7 { return .danger }
@@ -24,9 +17,9 @@ func compositeRisk(
     let factors = RiskFactors(
         pressureChange: pressureChangeScore(pressureChanges),
         pressureBaseline: absolutePressureScore(percentile: pressurePercentile),
-        humidity: humidityScore(humidity: humidity, change3h: pressureChanges.threeHour),
+        humidity: humidityScore(humidity: humidity, pressureChange3h: pressureChanges.threeHour),
         precipitation: precipitationScore(chance: precipitationChance, amount: precipitationAmount),
-        temperature: temperatureScore(change3h: temperatureChange3h)
+        temperature: temperatureScore(temperatureChange3h: temperatureChange3h)
     )
     return RiskAssessment(level: riskLevel(forScore: factors.total),
                           score: factors.total,

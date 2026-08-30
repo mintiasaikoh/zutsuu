@@ -26,4 +26,19 @@ struct AbsolutePressureScoreTests {
         let p = climatology.percentile(pressure: 1015, latitude: 47.9, longitude: 106.9, month: 1)
         #expect(absolutePressureScore(percentile: p) == 3)
     }
+
+    @Test("範囲外のパーセンタイルは 0.0〜1.0 に丸められる")
+    func outOfRangeIsClamped() {
+        #expect(absolutePressureScore(percentile: -0.5) == 3)
+        #expect(absolutePressureScore(percentile: 1.5) == 0)
+    }
+
+    /// 非有限値は Plan 6 の実装バグ。デバッグでは `assertionFailure` で停止し、
+    /// リリースでは 0 を返して通知が静かに止まらないようにする。
+    @Test("非有限値はデバッグビルドで検出される")
+    func nonFiniteIsCaughtInDebug() async {
+        await #expect(processExitsWith: .failure) {
+            _ = absolutePressureScore(percentile: .nan)
+        }
+    }
 }

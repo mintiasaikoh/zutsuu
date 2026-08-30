@@ -8,7 +8,10 @@ let package = Package(
         .library(name: "RiskEngine", targets: ["RiskEngine"])
     ],
     targets: [
-        .target(name: "RiskEngine"),
+        .target(
+            name: "RiskEngine",
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
         .testTarget(name: "RiskEngineTests", dependencies: ["RiskEngine"])
     ]
 )
