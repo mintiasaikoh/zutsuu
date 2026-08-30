@@ -1,6 +1,16 @@
 # RiskEngine 実装計画
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> ⚠️ **この文書は実装計画の履歴記録であり、API の参照元ではない。**
+>
+> 全 12 タスクは完了済み。**各タスク本文のコード片は実装と食い違っている**
+> （前方差分・`Coordinate`・`now` 引数・エピソード集約・可視性など、実装中に多くの変更が入った）。
+> タスク本文を読んで実装すると誤る。
+>
+> - **実装の正典: [`docs/riskengine-api.md`](../riskengine-api.md)**
+> - 設計判断とその理由: [`2026-08-30-global-ios-app-design.md`](2026-08-30-global-ios-app-design.md)
+>
+> 本文書の価値は「何を計画し、実装中に何がどう覆ったか」の記録にある。
+> 特に下記の実施記録は、同種の誤りを繰り返さないための資料である。
 
 **Goal:** 気象データから複合リスクスコアを算出する純粋ロジックを、テスト付きの Swift パッケージとして実装する。
 
@@ -28,54 +38,23 @@ WeatherKit は iOS 専用で entitlement を要するため、エンジンから
 | D | Task 9-10 | 完了 | `0477872` `82ab707` `128b7f4` `213a7dc` |
 | E | Task 11-12 | 完了 | `3233186` `6928d16` |
 
-### 最終 API（Task 12 で確定）
+### 最終 API
 
-**下流の計画（特に Plan 6）は本節を正とすること。** 各タスクの本文中のコード片は
-実装時に変更が入っており、古い記述が残っている箇所がある。
+**[`docs/riskengine-api.md`](../riskengine-api.md) を参照すること。**
 
-- `PressureClimatology.percentile(pressure:coordinate:month:)` — 緯度経度は `Coordinate` 値型に束ねた。
-  同型の `Double` が隣接する引数は本プロジェクトで 3 回バグを生んだため、
-  入れ替えをテストではなく型で表現不能にした
-- `RiskAnalyzer.init(climatology:coordinate:calendar:)`
-- `RiskAnalyzer.analyze` は末尾 `lookaheadHours`（=6）を返さない
-- `AlertScheduler.schedule(_:quietHours:now:)` — `now` は必須。設計書 §4 の規則 1〜5 を実装する
-- 純粋な値型はすべて `Hashable`。`Codable` は付けていない（Plan 2 が永続化形式を決めてから）
-- `HourlyRisk` は `Identifiable`（`id` は `point.date`）
+かつてここに API 一覧を置いていたが、監査で 4 件の誤りが見つかったため削除した。
+記録として、何を間違えていたかを残す。
 
-**`RiskAnalyzer` と `AlertScheduler` は解析のたびに作り直すこと。**
-どちらも `Calendar` を値として保持するため、init 時点のタイムゾーンが固定される。
-グローバルアプリでユーザーが移動した後も長寿命に持ち回すと、古いタイムゾーンで判定する。
-これはドキュメントによる制約であって型では防いでいない
-（テストの決定性のために注入可能である必要があるため）。Plan 2 の責任範囲。
+| 誤り | 実際 |
+|---|---|
+| `schedule(_:quietHours:now:)` | `schedule(_:now:quietHours:)` — **引数順が逆** |
+| 「設計書 §4 の規則 1〜5 を実装」 | 規則は 6 段（5a / 5b に分割済み） |
+| 「純粋な値型はすべて `Hashable`」 | `ScheduledAlert` / `QuietHours` / `HourlyRisk` は `Equatable` のみ |
+| （記載なし） | `AlertKind` / `ScheduledAlert.kind` / `.assessment` / `AlertScheduler.grace` / `QuietHours.isEnabled` が未記載 |
 
-### 最終レビューで塞いだテスト漏れ（Task 12 後）
-
-**層と層の間の配線は、両側の単体テストが揃っていても無防備になる。**
-本プロジェクトはこの形の不具合を既に 3 回出している（差分の向き、湿度と降水確率の入れ替え、
-緯度経度）。最終レビューの変異解析で生き残った 5 件も 4 件までが同じ形だったため、
-以下を固定した。
-
-- `RiskAnalyzer.analyze` → `AlertScheduler.schedule` の連結テストを追加
-  （`AnalyzeToScheduleTests.swift`）。72 時間の予報に 8 時間で -24hPa の急降下を置き、
-  予約が 1 件・発火 17:30・対象 19:00・危険レベルで出ることを固定する。
-  末尾切り詰めの根拠として書いてあった「切り詰めないと予約が 0 件になる」という主張は、
-  それまで返る点数（66）しか固定されておらず、実際に予約が出ることは誰も表明していなかった
-- 湿度ボーナスに渡す窓が 3h であること（`.sixHour` に書き換えても全テストが通っていた）
-- 降水量ボーナスの上限判定（確率 60〜79% の 1pt から 3mm で 2pt へ上がる経路が未テストだった）
-- 気温窓の深さが 3h であること（旧テストデータが index 3 で平坦になり、3h と 6h が同値だった）
-- `fireDate > now` の境界（素の発火時刻が `now` ちょうどの場合）
-
-**エピソードの判定の選び方を変更した（挙動変更）。**
-`AlertScheduler` はエピソード中の判定として「最高レベルに最初に到達した時点」を持っていたが、
-「最もスコアの高い時点（同点なら最も早い時点）」に改めた。
-判定を持たせている目的は通知本文で要因を出し分けること（`AlertScheduler.swift`）であり、
-危険が 7pt → 15pt → 8pt と推移する停滞では、旧規則は 7pt の内訳、
-つまり事象全体で最も弱い内訳を読み上げてしまう。
-スコアからレベルへの変換は単調なので、`targetLevel`（＝区間中の最高レベル）は変わらない。
-テスト用ヘルパー `makeRiskCurve` に per-point の内訳を渡せるようにして固定した
-（従来はレベルが同じ点の判定が全て同一で、どの時点を採っているか見分けられなかった）。
-
----
+**教訓: API の一覧を計画書の中に置くと必ず腐る。** 実装が進むほど計画書は履歴になり、
+一方で「最終 API」という見出しは読み手に現在の正確な情報を期待させる。
+その 2 つは両立しない。正典は実装のそばに独立した文書として置くこと。
 
 ### Batch A のレビューで確定した変更
 
