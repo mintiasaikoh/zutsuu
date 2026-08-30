@@ -1262,64 +1262,117 @@ git add ios/ZutsuuKit && git commit -m "RiskEngine: 通知予約時刻の算出�
 
 ### Task 11: 既存 TS 実装との一致を検証する回帰テスト
 
-移植の正しさを担保する。既存 `src/index.ts` に同じ入力を与えた結果と突き合わせる。
+移植の正しさを担保する。**期待値は手計算ではなく、実際に `src/index.ts` の
+`computeCompositeRisk` を実行して採取済み**（下表）。
+
+絶対気圧項はパーセンタイル方式へ変更したため、TS 側は気圧 1013hPa
+（＝固定閾値 1005 を超えるので絶対気圧スコア 0）で採取し、
+Swift 側は `pressurePercentile: 0.5`（＝同じく 0）で比較する。
+これにより変更した項を除いた全ロジックが 1 対 1 で対応する。
 
 **Files:**
 - Create: `ios/ZutsuuKit/Tests/RiskEngineTests/ParityTests.swift`
 
-**Step 1: TS 側の期待値を得る**
+**採取済みの期待値**
 
-`src/index.ts` の `computeCompositeRisk` を代表的な入力で実行し、出力を記録する。
-絶対気圧スコアはパーセンタイル方式へ変更したため、**TS 側の絶対気圧項を 0 にした条件で比較する**。
+| 1h | 3h | 6h | 湿度 | 降水確率 | 降水量 | 気温変化 | score | level | 気圧 | 湿度 | 降水 | 気温 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| -4 | -8 | -10 | 90 | 90 | 5 | -8 | 15 | 4 | 8 | 3 | 2 | 2 |
+| -2 | -4 | -6 | 75 | 60 | 0 | -5 | 7 | 4 | 3 | 2 | 1 | 1 |
+| 0 | 0 | 0 | 50 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| 3 | 6 | 10 | 60 | 30 | 1 | 6 | 7 | 4 | 6 | 0 | 0 | 1 |
+| -5 | -9 | -12 | 85 | 80 | 3 | -9 | 15 | 4 | 8 | 3 | 2 | 2 |
+| 2 | 4 | 6 | 74 | 59 | 2 | 4.9 | 3 | 2 | 3 | 0 | 0 | 0 |
 
-```bash
-npx tsx -e '
-const cases = [
-  [-4, -8, -10, 1013, 90, 90, 5, -8],
-  [-2, -4, -6, 1013, 75, 60, 0, -5],
-  [0, 0, 0, 1013, 50, 0, 0, 0],
-  [3, 6, 10, 1013, 60, 30, 1, 6],
-];
-for (const c of cases) console.log(JSON.stringify(c));
-'
-```
+4 行目は気圧**上昇**side が下降と同じく危険レベルに達することを固定する。
+6 行目は全要素を閾値のわずか下（湿度 74、降水確率 59、気温 4.9、降水量ちょうど 2）に置き、
+気圧以外が全て 0 になることを固定する。
 
-**Step 2: 期待値を Swift テストに書く**
+**Step 1: 失敗するテストを書く**
 
 ```swift
 import Testing
 @testable import RiskEngine
 
-/// src/index.ts の computeCompositeRisk と同じ結果になることを確認する。
-/// 絶対気圧項はパーセンタイル方式へ変更したため percentile: 0.5（=0pt）で比較する。
-@Test("既存TS実装と同じスコアになる", arguments: [
-    (change1h: -4.0, change3h: -8.0, change6h: -10.0, humidity: 90.0,
-     chance: 90.0, amount: 5.0, tempChange: -8.0, expectedScore: 15),
-    (change1h: -2.0, change3h: -4.0, change6h: -6.0, humidity: 75.0,
-     chance: 60.0, amount: 0.0, tempChange: -5.0, expectedScore: 7),
-    (change1h: 0.0, change3h: 0.0, change6h: 0.0, humidity: 50.0,
-     chance: 0.0, amount: 0.0, tempChange: 0.0, expectedScore: 0),
-])
-func parityWithTypeScript(change1h: Double, change3h: Double, change6h: Double,
-                          humidity: Double, chance: Double, amount: Double,
-                          tempChange: Double, expectedScore: Int) {
-    let result = compositeRisk(
-        pressureChanges: PressureChanges(oneHour: change1h, threeHour: change3h, sixHour: change6h),
-        pressurePercentile: 0.5,
-        humidity: humidity, precipitationChance: chance, precipitationAmount: amount,
-        temperatureChange3h: tempChange
-    )
-    #expect(result.score == expectedScore)
+@Suite("既存TS実装との一致")
+struct ParityTests {
+
+    struct Case: Sendable {
+        let oneHour, threeHour, sixHour: Double
+        let humidity, chance, amount, tempChange: Double
+        let score: Int
+        let level: RiskLevel
+        let pressure, humidityScore, precipitation, temperature: Int
+    }
+
+    static let cases: [Case] = [
+        .init(oneHour: -4, threeHour: -8, sixHour: -10, humidity: 90, chance: 90, amount: 5,
+              tempChange: -8, score: 15, level: .danger,
+              pressure: 8, humidityScore: 3, precipitation: 2, temperature: 2),
+        .init(oneHour: -2, threeHour: -4, sixHour: -6, humidity: 75, chance: 60, amount: 0,
+              tempChange: -5, score: 7, level: .danger,
+              pressure: 3, humidityScore: 2, precipitation: 1, temperature: 1),
+        .init(oneHour: 0, threeHour: 0, sixHour: 0, humidity: 50, chance: 0, amount: 0,
+              tempChange: 0, score: 0, level: .calm,
+              pressure: 0, humidityScore: 0, precipitation: 0, temperature: 0),
+        .init(oneHour: 3, threeHour: 6, sixHour: 10, humidity: 60, chance: 30, amount: 1,
+              tempChange: 6, score: 7, level: .danger,
+              pressure: 6, humidityScore: 0, precipitation: 0, temperature: 1),
+        .init(oneHour: -5, threeHour: -9, sixHour: -12, humidity: 85, chance: 80, amount: 3,
+              tempChange: -9, score: 15, level: .danger,
+              pressure: 8, humidityScore: 3, precipitation: 2, temperature: 2),
+        .init(oneHour: 2, threeHour: 4, sixHour: 6, humidity: 74, chance: 59, amount: 2,
+              tempChange: 4.9, score: 3, level: .slight,
+              pressure: 3, humidityScore: 0, precipitation: 0, temperature: 0),
+    ]
+
+    @Test("既存TS実装と同じスコアになる", arguments: cases)
+    func parity(c: Case) {
+        let result = compositeRisk(
+            pressureChanges: PressureChanges(oneHour: c.oneHour,
+                                             threeHour: c.threeHour,
+                                             sixHour: c.sixHour),
+            pressurePercentile: 0.5,
+            humidity: c.humidity,
+            precipitationChance: c.chance,
+            precipitationAmount: c.amount,
+            temperatureChange3h: c.tempChange
+        )
+        #expect(result.score == c.score)
+        #expect(result.level == c.level)
+        #expect(result.factors.pressureChange == c.pressure)
+        #expect(result.factors.humidity == c.humidityScore)
+        #expect(result.factors.precipitation == c.precipitation)
+        #expect(result.factors.temperature == c.temperature)
+    }
 }
 ```
 
-**注意:** 上記の `expectedScore` は手計算値。Step 1 で実際に TS を実行し、
-食い違ったら**TS 側を正**として Swift を直す。移植のバグを見つけるのがこのタスクの目的。
+要因ごとに個別に表明すること。合計だけを見ると、2 つの要因が
+逆方向に等量ずれた場合に相殺されて素通りする。
 
-**Step 3: テストを実行**
+**採取に使ったコマンド**（再採取が必要になった場合）
+
+```bash
+{ echo "type RiskLevel = 1|2|3|4;"
+  echo "interface RiskFactors { pressureScore:number; humidityScore:number; precipScore:number; tempScore:number; }"
+  sed -n '139,190p' src/index.ts
+  echo 'console.log(JSON.stringify(computeCompositeRisk(-4,-8,-10,1013,90,90,5,-8)));'
+} > /tmp/parity.ts && npx tsx /tmp/parity.ts
+```
+
+**Step 2: 失敗を確認**
 
 Run: `cd ios/ZutsuuKit && swift test`
-Expected: PASS（不一致があれば Swift 側を修正）
+Expected: FAIL
+
+**Step 3: テストが通ることを確認**
+
+実装は既に存在するため、新規コードは不要。
+**不一致が出た場合は TS 側を正として Swift を修正する。** 移植のバグを見つけるのがこのタスクの目的。
+
+Run: `cd ios/ZutsuuKit && swift test`
+Expected: PASS
 
 **Step 4: コミット**
 
