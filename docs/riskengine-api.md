@@ -16,8 +16,12 @@
 ios/ZutsuuKit/
 ├── Package.swift
 ├── Sources/RiskEngine/        # 13 ファイル
-└── Tests/RiskEngineTests/     # 12 ファイル
+├── Sources/PersonalRisk/      # 1 ファイル（依存: RiskEngine）
+├── Tests/RiskEngineTests/     # 12 ファイル
+└── Tests/PersonalRiskTests/   # 1 ファイル
 ```
+
+`PersonalRisk` は体調記録から通知閾値を個人化する回帰モデル（正典は `docs/personalrisk-api.md`）で、本文書のスコープ外。RiskEngine は他のターゲットに依存しない。
 
 | 項目 | 値 |
 |---|---|
@@ -29,7 +33,7 @@ ios/ZutsuuKit/
 
 `macOS(.v15)` を含めているのは `swift test` を Mac 上で直接回すため。シミュレータを起動せずに全ロジックを検証できることがこのパッケージの設計目的である。
 
-**WeatherKit / UIKit / SwiftUI を import しない。** アプリ層が WeatherKit のデータを `WeatherPoint` に変換して渡す。
+**RiskEngine は WeatherKit / UIKit / SwiftUI を import しない。** アプリ層が WeatherKit のデータを `WeatherPoint` に変換して渡す。
 
 ### CI
 
@@ -39,8 +43,9 @@ ios/ZutsuuKit/
   `--build-tests` が必須。これが無いとテストターゲットに警告検査が届かない（実測確認済み）
 - `swift test` と `swift test -c release` の両方
   リリース構成でのみ落ちる差異が過去に発生している
-- `xcodebuild build -scheme ZutsuuKit -destination 'generic/platform=iOS'` および `watchOS`
-  スキーム名は `RiskEngine` ではなく **`ZutsuuKit`**（パッケージ名）
+- `xcodebuild build -scheme ZutsuuKit-Package -destination 'generic/platform=iOS'` および `watchOS`
+  スキーム名は product 名ではなく自動生成の集約スキーム **`ZutsuuKit-Package`**。
+  product が 1 つの間は `ZutsuuKit` だったが、複数化で変わった（Xcode の命名規則）
 
 ---
 
@@ -380,8 +385,8 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 | 構成 | 件数 |
 |---|---|
-| debug | 97 |
-| release | 96 |
+| debug | 110（RiskEngine 97 + PersonalRisk 13） |
+| release | 109（RiskEngine 96 + PersonalRisk 13） |
 
 差は `#if DEBUG` の `assertionFailure` 検証（debug 3 件 / release 2 件）。
 

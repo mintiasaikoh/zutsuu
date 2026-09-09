@@ -40,9 +40,11 @@ jobs:
       # swift test は macOS ネイティブでしか走らない。実際の配布先は iOS と watchOS
       # なので、macOS にしか無い API が紛れ込んでもここまでの手順では気付けない
       # （Plan 2・Plan 5 でアプリに組み込むまで表面化しない）。両プラットフォーム向けの
-      # ビルドを通しておく。scheme 名は product 名の RiskEngine ではなくパッケージ名。
+      # ビルドを通しておく。scheme 名は product 名ではなく自動生成の集約スキーム。
+      # product が 1 つの間は「ZutsuuKit」だったが、複数化で
+      # 「ZutsuuKit-Package」に変わった（Xcode の命名規則）。
       - name: Build (iOS)
-        run: xcodebuild build -scheme ZutsuuKit -destination 'generic/platform=iOS'
+        run: xcodebuild build -scheme ZutsuuKit-Package -destination 'generic/platform=iOS'
 
       - name: Build (watchOS)
-        run: xcodebuild build -scheme ZutsuuKit -destination 'generic/platform=watchOS'
+        run: xcodebuild build -scheme ZutsuuKit-Package -destination 'generic/platform=watchOS'
