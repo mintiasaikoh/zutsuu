@@ -18,12 +18,14 @@ ios/ZutsuuKit/
 ├── Sources/RiskEngine/        # 13 ファイル
 ├── Sources/KiabouUI/          # 7 ファイル + Resources/（3D 素材・背景画像）
 ├── Sources/PersonalRisk/      # 1 ファイル（依存: RiskEngine）
+├── Sources/AppCore/           # 5 ファイル（依存: RiskEngine）
 ├── Tests/RiskEngineTests/     # 12 ファイル
 ├── Tests/KiabouUITests/       # 3 ファイル
-└── Tests/PersonalRiskTests/   # 1 ファイル
+├── Tests/PersonalRiskTests/   # 1 ファイル
+└── Tests/AppCoreTests/        # 5 ファイル
 ```
 
-`KiabouUI` は 1 タップ体調記録ときあぼう表示の UI ライブラリ（正典は `docs/kiabou-integration.md`）、`PersonalRisk` は体調記録から通知閾値を個人化する回帰モデル（正典は `docs/personalrisk-api.md`）。どちらも本文書のスコープ外。RiskEngine は他のターゲットに依存しない。
+`KiabouUI` は 1 タップ体調記録ときあぼう表示の UI ライブラリ（正典は `docs/kiabou-integration.md`）、`PersonalRisk` は体調記録から通知閾値を個人化する回帰モデル（正典は `docs/personalrisk-api.md`）、`AppCore` は WeatherKit 変換・通知文面・予約の温存判断などアプリ層の純粋ロジック（正典は `docs/appcore-api.md`）。いずれも本文書のスコープ外。RiskEngine は他のターゲットに依存しない。
 
 | 項目 | 値 |
 |---|---|
@@ -122,11 +124,7 @@ ios/ZutsuuKit/
 | `difference` | `todayMax - yesterdayMax`。**符号付き**（TS 実装は絶対値。文面の出し分けに使えるため符号を残した） |
 | `hasAlert` | `abs(difference) >= threshold` |
 
-**⚠️ 生成元がエンジンに存在しない。** TS の `detectTemperatureSwing()` は日境界の切り出しと各日の最高気温算出を含むが、Swift へ移植したのは比較部分のみ。以下はアプリ層（Plan 2）が決めること。
-
-- 日境界にどのカレンダー・タイムゾーンを使うか
-- 昨日のデータが取れない場合の扱い
-- 昨日の気温の取得元。WeatherKit の `hourlyForecast` は過去を含まないため、履歴取得の別 API 呼び出しが必要
+**生成元はエンジンに存在しない。** TS の `detectTemperatureSwing()` は日境界の切り出しと各日の最高気温算出を含むが、Swift へ移植したのは比較部分のみ。生成は `AppCore` の `TemperatureSwingDetector`（`docs/appcore-api.md`）が担い、日境界は渡された `Calendar`、昨日のデータがなければ `nil`、取得元は WeatherKit の hourly を昨日 00:00 から取る、と決定済み（2026-09-09）。
 
 #### `HourlyRisk: Sendable, Equatable, Identifiable`
 
@@ -178,7 +176,7 @@ ios/ZutsuuKit/
 func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double
 ```
 
-その地点・その月の海面気圧分布における位置を 0.0〜1.0 で返す。0 に近いほど「その土地としては低い」。実装は Plan 6（NOAA 再解析ベースの静的テーブル）。
+その地点・その月の海面気圧分布における位置を 0.0〜1.0 で返す。0 に近いほど「その土地としては低い」。実装は Plan 6（NOAA 再解析ベースの静的テーブル）。**それまでアプリは `AppCore.NeutralClimatology`（常に 0.5）を使い、絶対気圧スコアは恒久的に 0 になる**（`docs/appcore-api.md`）。
 
 戻り値が 0.0〜1.0 の外に出た場合と非有限値は、呼び出し側（`absolutePressureScore`）で吸収される。ただし NaN は debug で `assertionFailure` を起こす。
 
@@ -387,8 +385,8 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 | 構成 | 件数 |
 |---|---|
-| debug | 123（RiskEngine 97 + KiabouUI 13 + PersonalRisk 13） |
-| release | 122（RiskEngine 96 + KiabouUI 13 + PersonalRisk 13） |
+| debug | 146（RiskEngine 97 + KiabouUI 13 + PersonalRisk 13 + AppCore 23） |
+| release | 145（RiskEngine 96 + KiabouUI 13 + PersonalRisk 13 + AppCore 23） |
 
 差は `#if DEBUG` の `assertionFailure` 検証（debug 3 件 / release 2 件）。
 
