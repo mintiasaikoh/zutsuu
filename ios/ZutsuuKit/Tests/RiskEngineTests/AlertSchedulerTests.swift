@@ -14,17 +14,17 @@ struct AlertSchedulerTests {
         utcDate(year: 2026, month: 3, day: day, hour: hour, minute: minute)
     }
 
-    /// 曲線（3/10）より十分手前の「今」。規則 1・5 が働かない基準時刻。
+    /// 曲線（3/10）より十分手前の「今」。規則 1・3 が働かない基準時刻。
     private var early: Date { at(9, 12) }
 
-    // MARK: - 規則 3: リードタイム
+    // MARK: - 規則 2: リードタイム
 
     @Test("注意へ上がる90分前に予約される")
     func schedulesBeforeRiseToCaution() {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution, .caution], startHour: 12)
         #expect(scheduler.schedule(curve, now: early, quietHours: nil) == [
             ScheduledAlert(fireDate: at(10, 12, 30), targetDate: at(10, 14),
-                           assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution), kind: .advance)
         ])
     }
 
@@ -62,21 +62,75 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .caution, .caution], startHour: 22)
         #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
             ScheduledAlert(fireDate: at(10, 21, 30), targetDate: at(10, 23),
-                           assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution), kind: .advance)
         ])
     }
 
-    /// 深夜のイベントは、繰り下げ先（明けの 08:30）が対象時刻を追い越すので
-    /// 規則 5 で落ちる。破棄の判断は専用の規則ではなく繰り下げの結果から出る。
-    @Test("事前に知らせる術がない深夜のイベントは予約しない")
-    func dropsMidnightEventWithNoWayToWarnAhead() {
+    /// 深夜のイベントは、繰り下げ先（明けの 08:30）が対象時刻を追い越す。
+    /// 事前には知らせられないが、破棄せず起床時通知にする。
+    /// このアプリの通知が伝えるのは主に「薬を飲む時刻」であり、
+    /// それは事象の開始後でも実行できる行動だから。
+    @Test("事前に知らせる術がない深夜のイベントは起床時通知になる")
+    func convertsMidnightEventToWakeUpAlert() throws {
         // 03:00 に注意へ上がる。素の発火 01:30 は静穏時間内。
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 1)
-        #expect(scheduler.schedule(curve, now: early, quietHours: night).isEmpty)
-        #expect(scheduler.schedule(curve, now: early, quietHours: nil).count == 1)
+        #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
+            ScheduledAlert(fireDate: at(10, 8, 30), targetDate: at(10, 3),
+                           assessment: curveAssessment(.caution), kind: .wakeUp)
+        ])
+        // 静穏時間が無ければ本来のリードタイムどおり事前通知。件数も 1 のまま。
+        let free = scheduler.schedule(curve, now: early, quietHours: nil)
+        #expect(free.count == 1)
+        let alert = try #require(free.first)
+        #expect(alert.fireDate == at(10, 1, 30))
+        #expect(alert.kind == .advance)
     }
 
-    // MARK: - 規則 4: 静穏時間に掛かる発火は繰り下げる（P1 の修正）
+    /// 静穏時間の入口ぎりぎり（00:30）に到来するイベントも同じ扱い。
+    /// 素の発火 23:00 は静穏時間内なので繰り下がる。
+    @Test("静穏時間の入口直後のイベントも起床時通知になる")
+    func convertsEarlyNightEventToWakeUpAlert() {
+        // 22:30, 23:30, 00:30。対象は 3/11 00:30、素の発火は 3/10 23:00。
+        let curve = makeRiskCurve(levels: [.calm, .calm, .caution],
+                                  startHour: 0,
+                                  day: at(10, 22, 30))
+        #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
+            ScheduledAlert(fireDate: at(11, 8, 30), targetDate: at(11, 0, 30),
+                           assessment: curveAssessment(.caution), kind: .wakeUp)
+        ])
+    }
+
+    /// 起床時通知では `fireDate` が `targetDate` より後になる。
+    /// 事前警告と前後関係が反転するのはこの型の最も踏みやすい罠で、
+    /// アプリ層は `kind` を見て文面を分けなければならない。
+    @Test("起床時通知では発火時刻が対象時刻より後になる")
+    func wakeUpAlertFiresAfterTarget() throws {
+        let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 1)
+        let alert = try #require(scheduler.schedule(curve, now: early,
+                                                    quietHours: night).first)
+        #expect(alert.kind == .wakeUp)
+        #expect(alert.fireDate > alert.targetDate)
+        // 静穏時間の外であることは起床時通知でも保たれる。
+        #expect(!night.contains(alert.fireDate, calendar: utcCalendar))
+        // 過去には鳴らせない。予約可能であることは変わらない。
+        #expect(alert.fireDate > early)
+    }
+
+    /// 繰り上げ（規則 3）由来の追い越しは従来どおり破棄する。
+    /// こちらは就寝中に過ぎたのではなく、本当に直前に迫った事象であり、
+    /// 明けまで繰り下げる話にはならない（そもそも静穏時間に掛かっていない）。
+    @Test("繰り上げ由来の追い越しは起床時通知にせず破棄する")
+    func nowClampOvershootIsStillDropped() {
+        let curve = makeRiskCurve(levels: [.calm, .caution, .caution], startHour: 12)
+        // 対象 13:00 の 30 秒前。now + grace = 13:00:30 で対象を追い越す。
+        #expect(scheduler.schedule(curve, now: at(10, 13).addingTimeInterval(-30),
+                                   quietHours: nil).isEmpty)
+        // 静穏時間があっても同じ。繰り下げの手前で落ちる。
+        #expect(scheduler.schedule(curve, now: at(10, 13).addingTimeInterval(-30),
+                                   quietHours: night).isEmpty)
+    }
+
+    // MARK: - 規則 5: 静穏時間に掛かる発火は繰り下げる（P1 の修正）
 
     /// 09:00 の上昇は素の発火が 07:30 で静穏時間内。
     /// 破棄せず 08:30（明け）へ繰り下げ、30 分のリードで届ける。
@@ -85,7 +139,7 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 7)
         #expect(scheduler.schedule(curve, now: early, quietHours: night) == [
             ScheduledAlert(fireDate: at(10, 8, 30), targetDate: at(10, 9),
-                           assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution), kind: .advance)
         ])
         // 静穏時間が無ければ本来のリードタイムどおり 07:30。
         #expect(scheduler.schedule(curve, now: early, quietHours: nil).first?.fireDate
@@ -111,7 +165,7 @@ struct AlertSchedulerTests {
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 23)
         #expect(scheduler.schedule(curve, now: early, quietHours: lateNight) == [
             ScheduledAlert(fireDate: at(11, 0, 30), targetDate: at(11, 1),
-                           assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution), kind: .advance)
         ])
     }
 
@@ -134,7 +188,7 @@ struct AlertSchedulerTests {
         #expect(alerts.map(\.targetDate) == [base.addingTimeInterval(2 * 3600)])
     }
 
-    // MARK: - 規則 5: 発火時刻が過ぎている（P2 の修正）
+    // MARK: - 規則 3: 発火時刻が過ぎている（P2 の修正）
 
     /// 予報の開始直後に上がる場合、素の発火時刻は予報開始より前になる。
     /// 過去の時刻を返すとアプリ層で予約できない（トリガの間隔が正でない）。
@@ -145,7 +199,7 @@ struct AlertSchedulerTests {
         let alerts = scheduler.schedule(curve, now: now, quietHours: nil)
         #expect(alerts == [
             ScheduledAlert(fireDate: at(10, 12, 1), targetDate: at(10, 13),
-                           assessment: curveAssessment(.caution))
+                           assessment: curveAssessment(.caution), kind: .advance)
         ])
         let alert = try #require(alerts.first)
         #expect(alert.fireDate > now)
@@ -202,7 +256,7 @@ struct AlertSchedulerTests {
         #expect(!siesta.contains(alert.fireDate, calendar: utcCalendar))
     }
 
-    // MARK: - 規則 6: リードタイムが残らない
+    // MARK: - 規則 5a・5b: リードタイムが残らない
 
     @Test("繰り上げた発火が対象時刻を越える場合は予約しない")
     func dropsWhenNoLeadTimeRemainsAfterClamp() {
@@ -214,16 +268,29 @@ struct AlertSchedulerTests {
                                    quietHours: nil).map(\.fireDate) == [at(10, 12, 59)])
     }
 
-    @Test("繰り下げた発火が対象時刻を越える場合は予約しない")
-    func dropsWhenNoLeadTimeRemainsAfterShift() {
-        // 対象 09:00。明けが 09:00 なら繰り下げ先が対象時刻に並ぶので予約しない。
+    /// 繰り下げ先が対象時刻に**並ぶ**境界。リードは 0 分。
+    /// 事前警告としては成立しないので起床時通知に倒す。
+    /// `.advance` の約束（`fireDate < targetDate`）を満たさない以上、
+    /// ここを `.advance` と名乗らせるとアプリ層の分岐が壊れる。
+    @Test("繰り下げた発火が対象時刻に並ぶ場合は起床時通知になる")
+    func shiftOntoTargetIsWakeUp() throws {
+        // 対象 09:00。明けが 09:00 なら繰り下げ先が対象時刻に並ぶ。
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution], startHour: 7)
-        #expect(scheduler.schedule(curve, now: early,
-                                   quietHours: QuietHours(start: 22, end: 9)).isEmpty)
-        // 明けが 08:45 なら 15 分のリードが残るので予約する。
-        #expect(scheduler.schedule(curve, now: early,
-                                   quietHours: QuietHours(start: 22, end: 8.75))
-                    .map(\.fireDate) == [at(10, 8, 45)])
+        let boundary = scheduler.schedule(curve, now: early,
+                                          quietHours: QuietHours(start: 22, end: 9))
+        #expect(boundary.count == 1)
+        let alert = try #require(boundary.first)
+        #expect(alert.fireDate == at(10, 9))
+        #expect(alert.targetDate == at(10, 9))
+        #expect(alert.kind == .wakeUp)
+
+        // 明けが 08:45 なら 15 分のリードが残るので事前警告のまま。
+        let remaining = scheduler.schedule(curve, now: early,
+                                           quietHours: QuietHours(start: 22, end: 8.75))
+        #expect(remaining.count == 1)
+        let ahead = try #require(remaining.first)
+        #expect(ahead.fireDate == at(10, 8, 45))
+        #expect(ahead.kind == .advance)
     }
 
     // MARK: - エピソード集約（P3 の修正）
@@ -235,7 +302,7 @@ struct AlertSchedulerTests {
                                   startHour: 12)
         #expect(scheduler.schedule(curve, now: early, quietHours: nil) == [
             ScheduledAlert(fireDate: at(10, 12, 30), targetDate: at(10, 14),
-                           assessment: curveAssessment(.danger))
+                           assessment: curveAssessment(.danger), kind: .advance)
         ])
     }
 
@@ -317,6 +384,97 @@ struct AlertSchedulerTests {
                 == [at(10, 15)])
     }
 
+    // MARK: - 一晩の起床時通知の集約
+
+    /// 一晩に乱れが 3 回あっても、明けに鳴る通知は 1 件。
+    /// 起床と同時に通知が 3 件並ぶのは、直そうとした問題より悪い体験になる。
+    ///
+    /// `targetDate` は最も早い入口（00:00）、`assessment` は最も強い時点（02:00 の危険）。
+    /// 別々の時点を指す組み合わせであることがこのテストの主眼で、
+    /// 「その夜で最も強かった内訳」と「乱れが始まった時刻」をそれぞれ伝える。
+    @Test("一晩に複数のエピソードがあっても起床時通知は1件にまとまる")
+    func coalescesNightEpisodesIntoSingleWakeUpAlert() throws {
+        // 3/10 23:00 から 1 時間刻み。入口は 00:00・02:00・04:00 の 3 つ。
+        let curve = makeRiskCurve(levels: [.calm, .caution, .calm, .danger,
+                                           .calm, .caution, .calm],
+                                  startHour: 23)
+        let alerts = scheduler.schedule(curve, now: early, quietHours: night)
+        #expect(alerts.count == 1)
+        let alert = try #require(alerts.first)
+        #expect(alert.kind == .wakeUp)
+        #expect(alert.fireDate == at(11, 8, 30))
+        // 最も早い入口。ピークの時点（02:00）でも最後の入口（04:00）でもない。
+        #expect(alert.targetDate == at(11, 0))
+        // 束ねた中で最もスコアの高い判定。最も早いエピソードの注意ではない。
+        #expect(alert.assessment == curveAssessment(.danger))
+        #expect(alert.targetLevel == .danger)
+
+        // 静穏時間が無ければ 3 件のまま。束ねているのは起床時通知だけ。
+        #expect(scheduler.schedule(curve, now: early, quietHours: nil).count == 3)
+    }
+
+    /// スコアが同点なら最も早いエピソードの内訳を残す。
+    /// エピソード内の同点規則をエピソード間へそのまま延長している。
+    @Test("同点のエピソード同士では最も早い内訳を残す")
+    func coalescedWakeUpKeepsEarliestAssessmentOnTie() throws {
+        let pressureDriven = curveFactors(pressureChange: 7)                    // 7pt
+        let humidityDriven = curveFactors(pressureChange: 4, humidity: 3)       // 7pt
+        // 3/10 23:00 から。入口は 00:00 と 02:00。
+        let curve = makeRiskCurve(levels: [.calm, .danger, .calm, .danger, .calm],
+                                  factors: [curveFactors(), pressureDriven,
+                                            curveFactors(), humidityDriven, curveFactors()],
+                                  startHour: 23)
+        let alert = try #require(scheduler.schedule(curve, now: early,
+                                                    quietHours: night).first)
+        #expect(alert.assessment.factors == pressureDriven)
+        #expect(alert.targetDate == at(11, 0))
+    }
+
+    /// 別々の夜は別々の通知。束ねる単位は「同じ明けへ繰り下がったもの」。
+    @Test("夜が違えば起床時通知は別々に残る")
+    func doesNotCoalesceAcrossDifferentNights() {
+        // 3/10 23:00 から 1 時間刻みで 27 点。入口は 3/11 00:00 と 3/12 00:00。
+        var levels = [RiskLevel](repeating: .calm, count: 27)
+        levels[1] = .caution
+        levels[25] = .danger
+        let alerts = scheduler.schedule(makeRiskCurve(levels: levels, startHour: 23),
+                                        now: early, quietHours: night)
+        #expect(alerts.map(\.kind) == [.wakeUp, .wakeUp])
+        #expect(alerts.map(\.fireDate) == [at(11, 8, 30), at(12, 8, 30)])
+        #expect(alerts.map(\.targetDate) == [at(11, 0), at(12, 0)])
+    }
+
+    // MARK: - 静穏時間を 30 分刻みで一周する
+
+    /// 既定の静穏時間（22:00〜08:30）に対し、入口を 30 分刻みで 48 通り動かす。
+    /// 個別の時刻ではなく「無通知の穴が残っていないこと」を固定するためのテスト。
+    ///
+    /// 変更前は 19/48（00:00〜08:30 の 18 枠と 23:30）が破棄されていた。
+    /// 時計の 9 時間ぶんが無通知だったことになる。変更後はその 19 枠が
+    /// そのまま起床時通知になり、破棄はゼロになる。
+    @Test("30分刻みの全48通りの入口で通知が失われない")
+    func everyOnsetSlotProducesAnAlert() {
+        var kinds: [AlertKind] = []
+        for slot in 0..<48 {
+            let onset = at(10, 0).addingTimeInterval(TimeInterval(slot) * 1800)
+            let curve = makeRiskCurve(levels: [.calm, .caution, .caution],
+                                      startHour: 0,
+                                      day: onset.addingTimeInterval(-3600))
+            let alerts = scheduler.schedule(curve, now: early, quietHours: night)
+            #expect(alerts.count == 1, "入口 \(onset) で予約が \(alerts.count) 件")
+            guard let alert = alerts.first else { continue }
+            #expect(alert.targetDate == onset)
+            #expect(!night.contains(alert.fireDate, calendar: utcCalendar))
+            kinds.append(alert.kind)
+        }
+        // 件数を先に押さえないと、以下の内訳は空配列でも成立してしまう。
+        #expect(kinds.count == 48)
+        // 起床時通知になるのは 00:00〜08:30 の 18 枠と 23:30 の計 19 枠。
+        // 変更前に破棄されていた集合とちょうど一致する。
+        let wakeUpSlots = Set(kinds.indices.filter { kinds[$0] == .wakeUp })
+        #expect(wakeUpSlots == Set(0...17).union([47]))
+    }
+
     // MARK: - 静穏時間の判定
 
     @Test("日付をまたぐ静穏時間の境界")
@@ -337,16 +495,22 @@ struct AlertSchedulerTests {
         #expect(!siesta.contains(at(10, 15), calendar: utcCalendar))
     }
 
-    @Test("静穏時間がnilなら全て予約される")
+    @Test("静穏時間がnilなら全て本来のリードタイムで予約される")
     func nilQuietHoursSchedulesEverything() {
-        // 対象 03:00 と 09:00。既定の静穏時間なら前者は規則 2、後者は繰り下げ対象。
+        // 対象 03:00 と 09:00。既定の静穏時間なら前者は起床時通知、後者は繰り下げ。
         let curve = makeRiskCurve(levels: [.calm, .calm, .caution, .calm, .calm,
                                            .calm, .calm, .calm, .caution],
                                   startHour: 1)
-        #expect(scheduler.schedule(curve, now: early, quietHours: nil).map(\.fireDate)
-                == [at(10, 1, 30), at(10, 7, 30)])
-        #expect(scheduler.schedule(curve, now: early, quietHours: night).map(\.fireDate)
-                == [at(10, 8, 30)])
+        let free = scheduler.schedule(curve, now: early, quietHours: nil)
+        #expect(free.map(\.fireDate) == [at(10, 1, 30), at(10, 7, 30)])
+        #expect(free.map(\.kind) == [.advance, .advance])
+
+        // 夜間の乱れ（起床時通知）と朝の上昇（事前警告）は別々に残る。
+        // 発火時刻は同じ 08:30 でも伝える内容が違うため束ねない。
+        let quiet = scheduler.schedule(curve, now: early, quietHours: night)
+        #expect(quiet.map(\.fireDate) == [at(10, 8, 30), at(10, 8, 30)])
+        #expect(quiet.map(\.targetDate) == [at(10, 3), at(10, 9)])
+        #expect(quiet.map(\.kind) == [.wakeUp, .advance])
     }
 
     // MARK: - 静穏時間の値の検証（P4）

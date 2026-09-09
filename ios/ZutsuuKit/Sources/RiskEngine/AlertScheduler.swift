@@ -55,14 +55,37 @@ public struct QuietHours: Sendable, Equatable {
     }
 }
 
+/// 通知が何を伝えるものか。アプリ層が本文を出し分けるために持たせている。
+///
+/// これは「いつ通知が鳴るか」の区別であって、身体に何が起きたかの主張ではない。
+public enum AlertKind: Sendable, Equatable, Hashable {
+    /// 事前警告。`fireDate` は `targetDate` より前。
+    case advance
+    /// 起床時通知。静穏時間中に到来したイベントを、静穏時間の明けに知らせる。
+    /// `fireDate` は `targetDate` より**後**（境界では同時刻）になる。
+    case wakeUp
+}
+
 /// 予約する 1 件のローカル通知。
 /// アプリ層はこの `fireDate` をそのまま `UNNotificationRequest` のトリガに渡す。
 /// 「発火すべきでない」理由は全て `AlertScheduler` 側で落としてあるので、
 /// アプリ層が時刻を再検査する必要はない。
+///
+/// - Important: **`fireDate` と `targetDate` の前後関係は `kind` で反転する。**
+///   `.advance` では `fireDate < targetDate`（対象時刻の前に鳴る）。
+///   `.wakeUp` では `fireDate >= targetDate`（対象時刻は既に過ぎている）。
+///   `fireDate < targetDate` を前提に「あと何分後に始まる」と組み立てる文面や、
+///   差分を符号なしで扱う実装は `.wakeUp` で壊れる。必ず `kind` で分岐すること。
 public struct ScheduledAlert: Sendable, Equatable {
-    /// 通知を発火させる時刻。必ず `targetDate` より前で、静穏時間の外。
+    /// 通知を発火させる時刻。必ず静穏時間の外。
+    /// `targetDate` との前後関係は `kind` による（型の `- Important:` を参照）。
     public let fireDate: Date
     /// リスクが閾値を超える時刻（エピソードの入口）。通知本文の「何時から」。
+    ///
+    /// `.wakeUp` で複数のエピソードがまとまった場合は、まとめた中で**最も早い**入口。
+    /// `assessment` は同じ範囲の中で**最もスコアの高い**時点のものなので、
+    /// 両者は別の時点を指し得る。これは意図した組み合わせで、
+    /// 「その夜で最も強かった内訳」と「乱れが始まった時刻」をそれぞれ伝える。
     public let targetDate: Date
     /// エピソード中で最もスコアの高い時点の判定。同点なら最も早い時点。
     /// 通知本文で要因（気圧・湿度・気温）を出し分けるために持たせている。
@@ -79,10 +102,18 @@ public struct ScheduledAlert: Sendable, Equatable {
     /// 最高スコアの判定を持つことと最高レベルを名乗ることは両立する。
     public var targetLevel: RiskLevel { assessment.level }
 
-    public init(fireDate: Date, targetDate: Date, assessment: RiskAssessment) {
+    /// 事前警告か起床時通知か。
+    public let kind: AlertKind
+
+    /// - Note: `kind` に既定値を置いていないのは、`fireDate` と `targetDate` の
+    ///   前後関係が `kind` に依存するため。省略できると呼び出し側が
+    ///   `.advance` を暗黙に名乗って前後関係の約束を破れてしまう。
+    public init(fireDate: Date, targetDate: Date, assessment: RiskAssessment,
+                kind: AlertKind) {
         self.fireDate = fireDate
         self.targetDate = targetDate
         self.assessment = assessment
+        self.kind = kind
     }
 }
 
@@ -119,11 +150,56 @@ public struct AlertScheduler: Sendable {
     /// 曲線の先頭から既に閾値以上の場合は通知しない。
     /// 既に起きている事象であり、画面に出ている情報を通知で繰り返しても価値がない。
     ///
+    /// 静穏時間中に到来するエピソードは破棄せず、明けに鳴る `.wakeUp` にする。
+    /// 同じ明けへ繰り下がった `.wakeUp` は 1 件にまとめる（`coalescingWakeUps`）。
+    /// ただし呼び出し時点で入口が過ぎたエピソードは規則 1 が落とす。就寝中の
+    /// 再スケジュールで予約済み通知を無条件に置き換えると、前回返した `.wakeUp` が
+    /// 消える（API 仕様書 §6.9）。予約の温存はアプリ層の責務。
+    ///
     /// - Note: `risks` は時刻の昇順かつ等間隔であることを前提とする。検証はしない。
     ///   生成元は `RiskAnalyzer.analyze` のみで、どちらも同関数が保証している。
     public func schedule(_ risks: [HourlyRisk], now: Date,
                          quietHours: QuietHours?) -> [ScheduledAlert] {
-        episodes(in: risks).compactMap { alert(for: $0, now: now, quietHours: quietHours) }
+        let alerts = episodes(in: risks)
+            .compactMap { alert(for: $0, now: now, quietHours: quietHours) }
+        return coalescingWakeUps(alerts)
+    }
+
+    /// 同じ静穏時間の明けに発火する起床時通知を 1 件にまとめる。
+    ///
+    /// 一晩に乱れが複数回あると、その全てが同じ明けの時刻へ繰り下がる。
+    /// 束ねずに返すと起床と同時に通知が 3 件並び、直そうとした問題より体験が悪くなる。
+    ///
+    /// `targetDate` は最も早いエピソードの入口、`assessment` は束ねた中で
+    /// 最もスコアの高いエピソードのもの（同点なら最も早い）。
+    /// エピソード内でピークを採る規則をエピソード間へそのまま延長している。
+    ///
+    /// `.advance` は束ねない。事前警告は対象時刻ごとに意味が違う。
+    /// 明けの時刻に `.wakeUp` と `.advance` が並ぶことはあり得る
+    /// （夜間の乱れと、朝の上昇が同時に存在する場合）。
+    private func coalescingWakeUps(_ alerts: [ScheduledAlert]) -> [ScheduledAlert] {
+        var result: [ScheduledAlert] = []
+        var indexByFireDate: [Date: Int] = [:]
+
+        for alert in alerts {
+            guard alert.kind == .wakeUp else {
+                result.append(alert)
+                continue
+            }
+            guard let index = indexByFireDate[alert.fireDate] else {
+                indexByFireDate[alert.fireDate] = result.count
+                result.append(alert)
+                continue
+            }
+            let existing = result[index]
+            // 同点は更新しない。エピソード内の規則と同じく早いほうを残す。
+            guard alert.assessment.score > existing.assessment.score else { continue }
+            result[index] = ScheduledAlert(fireDate: existing.fireDate,
+                                           targetDate: existing.targetDate,
+                                           assessment: alert.assessment,
+                                           kind: .wakeUp)
+        }
+        return result
     }
 
     /// 閾値以上が連続する区間。
@@ -166,8 +242,8 @@ public struct AlertScheduler: Sendable {
         let targetDate = episode.onsetDate
 
         // 規則 1: 既に起きた事象は予約しない。
-        // 効果としては規則 3・5 に含まれる（過ぎた対象は発火が `now + grace` へ
-        // 繰り上がり、必ず対象時刻以降になって規則 5 で落ちる）。
+        // 効果としては規則 3・5a に含まれる（過ぎた対象は発火が `now + grace` へ
+        // 繰り上がり、必ず対象時刻以降になって規則 5a で落ちる）。
         // 意図を明示するために残しているだけで、ここが唯一の防波堤ではない。
         guard targetDate > now else { return nil }
 
@@ -179,16 +255,22 @@ public struct AlertScheduler: Sendable {
         // 差し迫った上昇こそ最も知らせる価値があるため。
         if fireDate <= now { fireDate = now.addingTimeInterval(Self.grace) }
 
-        // 規則 4: 静穏時間に掛かる発火は明けまで繰り下げる（破棄しない）。
+        // 規則 5a: 繰り上げ（規則 3）の結果、対象時刻に追いついてしまったなら破棄。
+        // 対象時刻まで grace すら残っていない、本当に直前の事象である。
+        // 繰り下げ（規則 5）より **前** に置くのが要点。ここを規則 5 の後にすると
+        // 繰り上げ由来の追い越しと繰り下げ由来の追い越しが区別できなくなり、
+        // 下の分岐が両方を起床時通知にしてしまう。
+        guard fireDate < targetDate else { return nil }
+
+        // 規則 5: 静穏時間に掛かる発火は明けまで繰り下げる（破棄しない）。
         // 繰り上げ（規則 3）より後に置くことが仕様。逆順にすると、
         // 静穏時間が leadTime より短い設定（例: 13:00〜13:30 の昼寝）で
         // `now + grace` が静穏時間内に落ちて鳴る。
         // 最後に繰り下げることで「静穏時間内に鳴らさない」が常に成り立つ。
         //
-        // 就寝中に到来する事象（例: 03:00 の上昇）は、繰り下げ先が対象時刻を
-        // 追い越して規則 5 で落ちる。一方 23:00 の上昇は発火 21:30 が静穏時間の
-        // 外なので繰り下げが起きず、就寝前に予告できる。
-        // 「対象時刻が静穏時間内なら破棄」という規則を別に置くと後者まで消える。
+        // 23:00 の上昇は発火 21:30 が静穏時間の外なので繰り下げが起きず、
+        // 就寝前に予告できる。
+        // 「対象時刻が静穏時間内なら破棄」という規則を別に置くとこれが消える。
         if let quietHours {
             guard let moved = quietHours.firstMomentOutside(fireDate, calendar: calendar) else {
                 return nil
@@ -196,10 +278,17 @@ public struct AlertScheduler: Sendable {
             fireDate = moved
         }
 
-        // 規則 5: リードタイムが残っていない通知は価値がない。
-        guard fireDate < targetDate else { return nil }
+        // 規則 5b: 繰り下げ（規則 5）の結果、対象時刻を追い越したなら起床時通知にする。
+        // 静穏時間中に到来したイベントであり、事前に知らせる術はない。
+        // それでも破棄しないのは、このアプリの通知が伝えるのは主に
+        // 「薬を飲む時刻」であり、それは事象の開始後でも実行できる行動だから。
+        // 就寝前に予告しても起床までに忘れられる一方、明けに鳴る通知は行動に繋がる。
+        //
+        // `.wakeUp` は通知が鳴る時刻の呼び名であって、
+        // 就寝中に身体へ何が起きたかについては何も主張していない（設計書 §6.3）。
+        let kind: AlertKind = fireDate < targetDate ? .advance : .wakeUp
 
         return ScheduledAlert(fireDate: fireDate, targetDate: targetDate,
-                              assessment: episode.peak)
+                              assessment: episode.peak, kind: kind)
     }
 }

@@ -335,7 +335,7 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 | 00:30 | 08:30（同上） | `.wakeUp` |
 | 現在 12:59・対象 13:00・静穏なし | — | 破棄（規則 5a） |
 
-30 分刻み 48 枠の掃引で、破棄されるのは onset 00:00〜08:30 の帯のみ（事前に知らせる術が物理的に存在しないケース）。
+30 分刻み 48 枠の掃引で破棄は 0。onset 00:00〜08:30 の 18 枠と 23:30 の計 19 枠（事前に知らせる術が物理的に存在しないケース）が `.wakeUp` になり、残り 29 枠は `.advance` になる（`everyOnsetSlotProducesAnAlert` が固定）。
 
 ### 5.4 起床時通知の集約
 
@@ -366,6 +366,7 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 6. **TS の外挿フォールバック（`change1h * 3`）を復活させないこと。** 1 時間の変化から 6 時間の変化を作るのはデータの捏造にあたる
 7. **`fireDate` と `targetDate` の前後関係は `kind` で反転する**（§2.1 参照）
 8. **`RiskLevel.rawValue` は変更禁止**
+9. **`schedule` は呼び出し時点で入口が過ぎたエピソードを返さない（規則 1）。** 就寝中の再スケジュール（バックグラウンド更新など）が onset の後に走ると、前回返した `.wakeUp` はもう返らない。アプリ層が予約済み通知を毎回無条件に置き換えると、起床時通知が静かに消える。未発火の予約をどう温存するかはアプリ層（Plan 2）が決めること
 
 ### 既知の限界
 
@@ -379,8 +380,8 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 | 構成 | 件数 |
 |---|---|
-| debug | 98 |
-| release | 97 |
+| debug | 97 |
+| release | 96 |
 
 差は `#if DEBUG` の `assertionFailure` 検証（debug 3 件 / release 2 件）。
 
@@ -392,6 +393,6 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 ## 8. 未確定・未レビュー
 
-**作業ツリーに未コミットの変更がある。** `AlertKind` の導入、`ScheduledAlert.init` のシグネチャ変更（破壊的）、規則 5 の 5a/5b 分割、起床時通知の集約 — 計 +285 行。テストは通っているが仕様適合レビューと品質レビューを経ていない。
+現在なし。
 
-`Tests/RiskEngineTests/ScratchSweep.swift` は計測用のスクラッチであり削除すべき。`#expect` を一件も持たず、ローカルのテスト件数を 1 件水増ししている。
+2026-08-31 に `AlertKind` 導入・5a/5b 分割・起床時通知の集約（+285 行）の仕様適合レビューと品質レビュー（8 観点）を実施。挙動の仕様違反はゼロ。指摘は本文書の記述修正（§5.3 の掃引結果・規則番号の統一）、テストの件数表明の復元、§6.9 の追記として反映済み。`ScratchSweep.swift` は削除済み。
