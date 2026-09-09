@@ -52,8 +52,10 @@ public struct KiabouCheckInView: View {
                     .frame(minHeight: 44)
                 } else {
                     HStack(spacing: 12) {
-                        recordButton("良い", feeling: .good)
-                        recordButton("悪い", feeling: .bad)
+                        RecordButton(title: "良い", feeling: .good, palette: palette,
+                                     disabled: model.isSaving) { Task { await model.record(.good) } }
+                        RecordButton(title: "悪い", feeling: .bad, palette: palette,
+                                     disabled: model.isSaving) { Task { await model.record(.bad) } }
                     }
                     if model.isSaving {
                         Text("記録しています…").foregroundStyle(palette.muted)
@@ -94,19 +96,5 @@ public struct KiabouCheckInView: View {
         .onChange(of: model.isResting) { _, _ in headingFocused = true }
     }
 
-    private func recordButton(_ title: String, feeling: HealthFeeling) -> some View {
-        Button {
-            Task { await model.record(feeling) }
-        } label: {
-            Text(title).font(.body.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(feeling == .bad ? palette.primary : palette.primary.opacity(0.10),
-                            in: RoundedRectangle(cornerRadius: 16))
-                .foregroundStyle(feeling == .bad ? palette.onPrimary : palette.ink)
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isSaving)
-        .accessibilityLabel("体調が\(title)。記録する")
-    }
 }
 #endif

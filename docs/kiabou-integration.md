@@ -27,8 +27,16 @@ RiskEngine と KiabouUI は相互に依存しない。体調と気象の関連�
 ## 2. 公開 API と契約
 
 ```swift
-public struct KiabouCheckInView: View {
+public struct KiabouCheckInView: View {          // 全画面版（記録タブ）。見え方の設定を含む
     public init(onRecord: @escaping @MainActor (HealthCheckIn) async throws -> Void)
+}
+public struct KiabouQuickCheckIn: View {         // ホーム埋め込み版。ステージ + 2 ボタン + 状態 + 累計日数
+    public init(recordedDays: Int? = nil,
+                onRecord: @escaping @MainActor (HealthCheckIn) async throws -> Void)
+}
+public struct KiabouPalette: Sendable {          // 3 色 + 紙白。アプリ全体が共有する配色
+    public init(dim: Bool)
+    public var page, card, ink, muted, primary, onPrimary: Color
 }
 public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
     public let id: UUID
@@ -61,6 +69,13 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 - `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`
 - `assets/kiabou/personas/` — 衣装ペルソナ（ぎゃる・ぱんく等）の試作。採否未定
 - `kiabou-wardrobe-v1.zip` は展開済み内容と重複するため git 管理外
+
+## 4.5 実装上の罠（2026-09-10）
+
+`KiabouScene` は `@Observable` で、`RealityView` の `update:` 内から `stop()` / `setMotion` を呼ぶ。
+内部状態（`enabled`・`subscription` など）を観測対象にすると「書き換え → 再描画 → `update` → 書き換え」の
+無限ループでメインスレッドが止まる（ホームの ScrollView に埋め込んだ時点で顕在化、`sample` で確認）。
+画面が観測してよいのは `loadedResting` と `failed` だけで、他は `@ObservationIgnored`。新しい状態を足すときも同じ。
 
 ## 5. プラットフォーム
 

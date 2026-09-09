@@ -11,13 +11,16 @@ final class KiabouScene {
     let root = Entity()
     let camera = PerspectiveCamera()
     private let drift = Entity()
-    private var models: [Bool: Entity] = [:]
-    private var animations: [AnimationPlaybackController] = []
-    private var subscription: EventSubscription?
-    private var motion = PinkMotion()
-    private var enabled = false
-    private var resting = false
-    private var skipNextFrame = true
+    // 以下は描画ループの内部状態。`RealityView` の `update:` 内から書き換えるため、
+    // 観測対象にすると「書き換え → 再描画 → update → 書き換え」の無限ループになり
+    // メインスレッドが止まる（実測）。画面が見るのは loadedResting と failed だけ。
+    @ObservationIgnored private var models: [Bool: Entity] = [:]
+    @ObservationIgnored private var animations: [AnimationPlaybackController] = []
+    @ObservationIgnored private var subscription: EventSubscription?
+    @ObservationIgnored private var motion = PinkMotion()
+    @ObservationIgnored private var enabled = false
+    @ObservationIgnored private var resting = false
+    @ObservationIgnored private var skipNextFrame = true
     private(set) var loadedResting: Bool?
     private(set) var failed = false
 

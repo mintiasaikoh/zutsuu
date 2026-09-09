@@ -18,6 +18,10 @@ final class ForecastPipeline {
     private(set) var errorMessage: String?
     private(set) var isRefreshing = false
     private(set) var attribution: WeatherAttribution?
+    /// 予約した通知のうち発火が最も早いもの。ホームの「次の通知」に、通知と同じ文面で出す。
+    private(set) var nextAlert: AlertNotificationContent?
+    /// 記録のある暦日の累計。記録の見返り表示に使う。
+    private(set) var recordedDays = 0
 
     private var series: [WeatherPoint] = []
     private var coordinate: Coordinate?
@@ -67,6 +71,7 @@ final class ForecastPipeline {
             risks = analyzer.analyze(series)
             swing = TemperatureSwingDetector.detect(in: series, now: now, calendar: calendar)
             lastUpdated = now
+            recordedDays = (try? store.recordedDayCount(calendar: calendar)) ?? 0
             await rescheduleNotifications(now: now)
             if attribution == nil { attribution = try? await weather.attribution() }
         } catch {
@@ -78,6 +83,7 @@ final class ForecastPipeline {
     /// 記録時点の要因を一緒に保存し、その場で通知閾値を学習し直す。
     func record(_ checkIn: HealthCheckIn) async throws {
         try store.save(checkIn, factors: risk(at: checkIn.date)?.assessment.factors)
+        recordedDays = (try? store.recordedDayCount(calendar: .current)) ?? recordedDays
         await rescheduleNotifications(now: Date())
     }
 
@@ -117,6 +123,8 @@ final class ForecastPipeline {
         }
         let alerts = AlertScheduler(calendar: calendar)
             .schedule(schedulingRisks, now: now, quietHours: settings.quietHours)
+        nextAlert = alerts.min { $0.fireDate < $1.fireDate }
+            .map { AlertNotifications.content(for: $0, risks: risks, calendar: calendar) }
         // 権限は最初に予約が必要になった時点で求める。未許可のまま add しても届かない。
         if await notifications.authorizationStatus() == .notDetermined {
             _ = await notifications.requestAuthorization()

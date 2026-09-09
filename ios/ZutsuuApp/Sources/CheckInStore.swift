@@ -70,4 +70,10 @@ final class CheckInStore {
     func count() throws -> Int {
         try context.fetchCount(FetchDescriptor<CheckInRecord>())
     }
+
+    /// 記録のある暦日の数（累計。連続ではない）。着せ替えの解放と見返り表示に使う（設計書 §6.7）。
+    func recordedDayCount(calendar: Calendar) throws -> Int {
+        let dates = try context.fetch(FetchDescriptor<CheckInRecord>()).map(\.date)
+        return Set(dates.map { calendar.startOfDay(for: $0) }).count
+    }
 }
