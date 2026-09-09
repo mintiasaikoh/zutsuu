@@ -117,9 +117,14 @@ final class ForecastPipeline {
         }
         let alerts = AlertScheduler(calendar: calendar)
             .schedule(schedulingRisks, now: now, quietHours: settings.quietHours)
+        // 権限は最初に予約が必要になった時点で求める。未許可のまま add しても届かない。
+        if await notifications.authorizationStatus() == .notDetermined {
+            _ = await notifications.requestAuthorization()
+        }
         let plan = NotificationReconciler.reconcile(pending: await notifications.pending(),
                                                     scheduled: alerts, now: now)
         await notifications.apply(plan, risks: risks, calendar: calendar)
+        Self.logger.info("通知予約: 予定 \(alerts.count) 件、追加 \(plan.add.count) 件、取消 \(plan.cancel.count) 件")
     }
 
     private static func describe(_ error: any Error) -> String {

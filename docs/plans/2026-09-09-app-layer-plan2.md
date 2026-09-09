@@ -30,7 +30,8 @@
 
 - xcodegen 生成・Swift 6 strict concurrency・警告エラー化でビルド成功。CI にもシミュレータビルドを追加
 - iPhone 17 Pro シミュレータで起動、位置情報ダイアログ（説明文つき）→ 位置取得 → WeatherKit へのリクエスト送信までログで確認
-- WeatherKit は `WDSJWTAuthenticatorServiceProxy.Errors error 0` で失敗。**Developer Portal で App ID `com.mintiasaikoh.zutsuu` に WeatherKit capability を有効化するまで実データは取れない**（Bundle ID を変える場合は `project.yml` の 1 箇所）
+- App ID 登録前は WeatherKit が `WDSJWTAuthenticatorServiceProxy.Errors error 0` で失敗した。Developer Portal で `com.mintiasaikoh.zutsuu` に WeatherKit capability（Capabilities と App Services の両方）を有効化し、**署名ありでビルドしたところ取得に成功**（署名なし `CODE_SIGNING_ALLOWED=NO` では entitlement が乗らず認証エラーのまま）
+- **実データで単位の罠をクリア**: 東京で「やや注意 3pt」＝湿度 90%（+2）＋降水確率 74%（+1）、気圧 1,014〜1,017 hPa。比率のまま・inHg のままなら両方 0pt になっていた。絶対気圧は `NeutralClimatology` のため設計どおり 0
 - SwiftData の初回起動ログに `default.store` の stat 失敗が出るが、ストア新規作成時の既知のノイズ
 - 実機での確認事項: 位置情報ダイアログが毎回出ないこと（シミュレータでは `simctl privacy grant` 後も再表示された）、通知の実発火、バックグラウンド更新
 
