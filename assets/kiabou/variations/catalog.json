@@ -1,0 +1,266 @@
+{
+  "_file": "/Users/mymac/zutsuu/assets/kiabou/variations/catalog.json",
+  "_role": "生成した着せ替え素材のパスと構造を列挙する。",
+  "_reason": "実装担当が存在する素材だけを読み込めるようにするため。",
+  "_related": [
+    "ASSETS.md",
+    "build_variations.py",
+    "index.html"
+  ],
+  "version": 1,
+  "upAxis": "Y",
+  "metersPerUnit": 1,
+  "variants": [
+    {
+      "id": "kasumi-plain",
+      "family": "kasumi",
+      "label": "かすみ",
+      "style": "plain",
+      "swim": {
+        "path": "kasumi/plain/swim",
+        "glbBytes": 553552,
+        "usdzBytes": 722518,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "kasumi/plain/rest-body",
+        "glbBytes": 361904,
+        "usdzBytes": 572237,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "kasumi/plain/covered",
+        "glbBytes": 543840,
+        "usdzBytes": 1041788,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "kasumi-pattern",
+      "family": "kasumi",
+      "label": "かすみ",
+      "style": "pattern",
+      "swim": {
+        "path": "kasumi/pattern/swim",
+        "glbBytes": 578812,
+        "usdzBytes": 747730,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "kasumi/pattern/rest-body",
+        "glbBytes": 387164,
+        "usdzBytes": 597449,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "kasumi/pattern/covered",
+        "glbBytes": 569104,
+        "usdzBytes": 1066955,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "shizuku-plain",
+      "family": "shizuku",
+      "label": "しずく",
+      "style": "plain",
+      "swim": {
+        "path": "shizuku/plain/swim",
+        "glbBytes": 553536,
+        "usdzBytes": 722501,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "shizuku/plain/rest-body",
+        "glbBytes": 361888,
+        "usdzBytes": 572220,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "shizuku/plain/covered",
+        "glbBytes": 542000,
+        "usdzBytes": 1039981,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "shizuku-pattern",
+      "family": "shizuku",
+      "label": "しずく",
+      "style": "pattern",
+      "swim": {
+        "path": "shizuku/pattern/swim",
+        "glbBytes": 562748,
+        "usdzBytes": 731715,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "shizuku/pattern/rest-body",
+        "glbBytes": 371100,
+        "usdzBytes": 581434,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "shizuku/pattern/covered",
+        "glbBytes": 551216,
+        "usdzBytes": 1049084,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "komorebi-plain",
+      "family": "komorebi",
+      "label": "こもれび",
+      "style": "plain",
+      "swim": {
+        "path": "komorebi/plain/swim",
+        "glbBytes": 553352,
+        "usdzBytes": 722320,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "komorebi/plain/rest-body",
+        "glbBytes": 361704,
+        "usdzBytes": 572039,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "komorebi/plain/covered",
+        "glbBytes": 542272,
+        "usdzBytes": 1040164,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "komorebi-pattern",
+      "family": "komorebi",
+      "label": "こもれび",
+      "style": "pattern",
+      "swim": {
+        "path": "komorebi/pattern/swim",
+        "glbBytes": 577536,
+        "usdzBytes": 746503,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "restBody": {
+        "path": "komorebi/pattern/rest-body",
+        "glbBytes": 385888,
+        "usdzBytes": 596222,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 0
+      },
+      "covered": {
+        "path": "komorebi/pattern/covered",
+        "glbBytes": 566456,
+        "usdzBytes": 1064325,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    }
+  ],
+  "accessories": [
+    {
+      "id": "kasumi-pillow",
+      "kind": "pillow",
+      "path": "kasumi/accessories/pillow",
+      "glbBytes": 53712,
+      "usdzBytes": 83200,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    },
+    {
+      "id": "kasumi-blanket",
+      "kind": "blanket",
+      "path": "kasumi/accessories/blanket",
+      "glbBytes": 75316,
+      "usdzBytes": 319661,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    },
+    {
+      "id": "shizuku-pillow",
+      "kind": "pillow",
+      "path": "shizuku/accessories/pillow",
+      "glbBytes": 53716,
+      "usdzBytes": 83225,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    },
+    {
+      "id": "shizuku-blanket",
+      "kind": "blanket",
+      "path": "shizuku/accessories/blanket",
+      "glbBytes": 73492,
+      "usdzBytes": 317839,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    },
+    {
+      "id": "komorebi-pillow",
+      "kind": "pillow",
+      "path": "komorebi/accessories/pillow",
+      "glbBytes": 53712,
+      "usdzBytes": 83177,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    },
+    {
+      "id": "komorebi-blanket",
+      "kind": "blanket",
+      "path": "komorebi/accessories/blanket",
+      "glbBytes": 73948,
+      "usdzBytes": 318292,
+      "meshes": 1,
+      "materials": 1,
+      "animations": 0
+    }
+  ],
+  "bed": {
+    "path": "shared/bed",
+    "glbBytes": 53708,
+    "usdzBytes": 83183,
+    "meshes": 1,
+    "materials": 1,
+    "animations": 0
+  },
+  "sharedGeometryUVHash": "8dfe6f2c3da450e1d6ff06ea2ed3473b464d519eafc1011f19a9247297aad9bb"
+}

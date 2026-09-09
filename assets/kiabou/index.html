@@ -1,0 +1,60 @@
+<!-- /Users/mymac/zutsuu/assets/kiabou/index.html -->
+<!-- 自分のペースで、きあぼうと一緒に休む体験を表示する。 -->
+<!-- 個人で使う気圧アプリの相棒として、静かな休憩の姿を確かめるため。 -->
+<!-- 関連: rest.css, rest.js, scenery.css, scenery.js -->
+<!doctype html>
+<html lang="ja" data-scenery="cove" data-light="soft">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>きあぼう — ひと休み</title>
+  <script src="scenery-init.js"></script>
+  <link rel="stylesheet" href="rest.css">
+  <link rel="stylesheet" href="scenery.css">
+  <script type="module" src="scenery.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+  <script type="module" src="rest.js"></script>
+</head>
+<body>
+  <main>
+    <header><a class="wordmark" href="./">きあぼう<span>そばに、いるよ。</span></a><span id="place">あなたの居場所</span></header>
+    <section class="experience" aria-labelledby="heading">
+      <div class="intro">
+        <p id="eyebrow">自分のペースで。</p>
+        <h1 id="heading" tabindex="-1">少し、ひと休み。</h1>
+        <p id="description">休みたいときは、きあぼうも一緒に。</p>
+      </div>
+      <div class="stage">
+      <model-viewer id="kiabou" src="kiabou.glb" poster="preview.png" loading="eager"
+        animation-name="Drift" camera-orbit="-18deg 82deg auto" camera-target="auto auto auto"
+        shadow-intensity="0.3" shadow-softness="1" exposure="1" interaction-prompt="none"
+        alt="青い背中と白いお腹のマンボウ、きあぼう。静かに泳いでいます。">
+        <span slot="progress-bar"></span>
+      </model-viewer>
+      </div>
+      <p id="asset-status" role="status"></p>
+      <div class="actions">
+        <button class="primary" id="rest">いまは、休む</button>
+        <p id="quiet-message" hidden></p>
+        <p class="hint" id="hint">理由を決めなくても、大丈夫。</p>
+        <button class="text-button" id="finish" hidden>休みを終える</button>
+        <button class="text-button" id="motion">ゆらぎを止める</button>
+      </div>
+    </section>
+    <section class="scene-settings" aria-label="見え方の設定">
+      <fieldset><legend>背景</legend><div class="choices">
+        <button type="button" data-scenery-choice="cove" aria-pressed="true">入り江</button>
+        <button type="button" data-scenery-choice="plain" aria-pressed="false">無地</button>
+      </div></fieldset>
+      <fieldset><legend>明るさ</legend><div class="choices">
+        <button type="button" data-light-choice="soft" aria-pressed="true">やわらかい昼</button>
+        <button type="button" data-light-choice="dim" aria-pressed="false">薄明かり</button>
+      </div></fieldset>
+    </section>
+    <aside class="prototype" aria-label="体験プレビューについて">
+      <div class="preview-heading"><span>体験プレビュー</span><a href="model.html">3D素材を見る ↗</a></div>
+      <p>「いまは、休む」で、きあぼうも寝床へ。気圧データとの連動は未実装です。</p>
+    </aside>
+  </main>
+</body>
+</html>

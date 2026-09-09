@@ -1,0 +1,155 @@
+{
+  "_file": "/Users/mymac/zutsuu/assets/kiabou/personas/catalog.json",
+  "_role": "キャラクター衣装の生成済み素材を列挙する。",
+  "_reason": "実装担当が色だけ・衣装付きの正しいモデルを選ぶため。",
+  "_related": [
+    "README.md",
+    "build_personas.py",
+    "outfits.py"
+  ],
+  "version": 1,
+  "upAxis": "Y",
+  "metersPerUnit": 1,
+  "personas": [
+    {
+      "id": "gyaru",
+      "label": "ぎゃる",
+      "plain": {
+        "path": "gyaru/plain",
+        "glbBytes": 553544,
+        "usdzBytes": 722514,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "costume": {
+        "path": "gyaru/costume",
+        "glbBytes": 1069680,
+        "usdzBytes": 1238316,
+        "meshes": 2,
+        "materials": 9,
+        "animations": 1
+      },
+      "covered": {
+        "path": "gyaru/covered",
+        "glbBytes": 542020,
+        "usdzBytes": 1039974,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "punk",
+      "label": "ぱんく",
+      "plain": {
+        "path": "punk/plain",
+        "glbBytes": 553376,
+        "usdzBytes": 722358,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "costume": {
+        "path": "punk/costume",
+        "glbBytes": 758976,
+        "usdzBytes": 929941,
+        "meshes": 2,
+        "materials": 7,
+        "animations": 1
+      },
+      "covered": {
+        "path": "punk/covered",
+        "glbBytes": 541852,
+        "usdzBytes": 1039727,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "cafe",
+      "label": "喫茶店員",
+      "plain": {
+        "path": "cafe/plain",
+        "glbBytes": 553328,
+        "usdzBytes": 722296,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "costume": {
+        "path": "cafe/costume",
+        "glbBytes": 822384,
+        "usdzBytes": 992447,
+        "meshes": 2,
+        "materials": 7,
+        "animations": 1
+      },
+      "covered": {
+        "path": "cafe/covered",
+        "glbBytes": 541800,
+        "usdzBytes": 1039743,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "mage",
+      "label": "魔法使い",
+      "plain": {
+        "path": "mage/plain",
+        "glbBytes": 553532,
+        "usdzBytes": 722498,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "costume": {
+        "path": "mage/costume",
+        "glbBytes": 771976,
+        "usdzBytes": 951008,
+        "meshes": 2,
+        "materials": 7,
+        "animations": 1
+      },
+      "covered": {
+        "path": "mage/covered",
+        "glbBytes": 542000,
+        "usdzBytes": 1039920,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    },
+    {
+      "id": "rapper",
+      "label": "らっぱー",
+      "plain": {
+        "path": "rapper/plain",
+        "glbBytes": 553476,
+        "usdzBytes": 722446,
+        "meshes": 1,
+        "materials": 4,
+        "animations": 1
+      },
+      "costume": {
+        "path": "rapper/costume",
+        "glbBytes": 1088232,
+        "usdzBytes": 1250178,
+        "meshes": 2,
+        "materials": 8,
+        "animations": 1
+      },
+      "covered": {
+        "path": "rapper/covered",
+        "glbBytes": 541952,
+        "usdzBytes": 1039933,
+        "meshes": 4,
+        "materials": 7,
+        "animations": 0
+      }
+    }
+  ]
+}

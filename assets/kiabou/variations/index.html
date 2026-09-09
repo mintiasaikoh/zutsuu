@@ -1,0 +1,61 @@
+<!-- /Users/mymac/zutsuu/assets/kiabou/variations/index.html -->
+<!-- 生成した3D着せ替え素材を比較し、単体でダウンロードする。 -->
+<!-- ラフ画像ではなく、実際のGLBの形・模様・動きを確認するため。 -->
+<!-- 関連: catalog.json, ASSETS.md, viewer.js, concept-sheet.png -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>きあぼうの着せ替え — 3D素材</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+  <script type="module" src="viewer.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f2f4f1; color: #273e50; font: 15px/1.7 system-ui, sans-serif; }
+    main { max-width: 1300px; margin: auto; padding: 38px 28px; }
+    header { margin-bottom: 26px; }
+    .eyebrow { font-size: 12px; letter-spacing: .14em; }
+    h1 { font-size: clamp(24px, 3vw, 34px); font-weight: 550; margin: 6px 0; letter-spacing: .04em; }
+    p { color: #526775; margin: 8px 0; }
+    .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 28px; }
+    label { display: grid; gap: 4px; font-size: 13px; }
+    select, button, .download { min-height: 44px; border: 1px solid #b9c8cf; border-radius: 10px; padding: 9px 16px; background: #f9faf8; color: #273e50; font: inherit; }
+    button, select { cursor: pointer; }
+    button:disabled { opacity: .55; cursor: default; }
+    :focus-visible { outline: 3px solid #254c69; outline-offset: 3px; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    article { min-width: 0; padding: 20px; background: #f9faf8; border-radius: 24px; }
+    h2 { font-size: 21px; font-weight: 550; margin: 0; }
+    .number { font: 12px/1.8 ui-monospace, monospace; color: #526775; }
+    model-viewer { display: block; width: 100%; height: 380px; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .download { text-decoration: none; font-size: 13px; }
+    .status { min-height: 24px; font-size: 12px; }
+    footer { margin-top: 24px; font-size: 13px; color: #526775; }
+    footer a { color: #254c69; }
+    @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } main { padding: 26px 18px; } model-viewer { height: 360px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">KIABOU / WARDROBE</span>
+    <h1>きあぼう、その人だけの空模様。</h1>
+    <p>色と模様、枕と毛布。実際の3D素材を回して見られます。</p>
+  </header>
+  <div class="controls">
+    <label>体の仕上げ<select id="style"><option value="pattern">模様あり</option><option value="plain">色だけ</option></select></label>
+    <label>見る素材<select id="pose"><option value="swim">泳ぐきあぼう</option><option value="covered">毛布で休む姿</option><option value="rest-body">寝姿の体だけ</option><option value="pillow">枕だけ</option><option value="blanket">毛布だけ</option></select></label>
+    <button id="motion" type="button">泳ぎを再生</button>
+    <button id="reset" type="button">向きを戻す</button>
+  </div>
+  <div class="cards" id="cards"></div>
+  <footer>
+    ドラッグで回転できます。素材はGLB・USDZともにテクスチャを同梱しています。
+    <br>この確認用ビューアの初回表示にはネット接続が必要です。
+    <a href="concept-sheet.png">デザインラフ</a> · <a href="ASSETS.md">実装担当向けの素材仕様</a>
+  </footer>
+</main>
+</body>
+</html>

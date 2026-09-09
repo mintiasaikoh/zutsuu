@@ -1,0 +1,8 @@
+# /Users/mymac/zutsuu/assets/kiabou/.gitignore
+# 生成時のキャッシュとBlenderのバックアップを除外する。
+# きあぼうの素材と再生成ソースだけを管理するため。
+# 関連: geometry.py, create_kiabou.py, export_kiabou.py
+__pycache__/
+*.blend1
+# 展開済みの variations/ 一式と内容が重複するため（fable5 追記）
+kiabou-wardrobe-v1.zip

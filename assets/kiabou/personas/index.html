@@ -1,0 +1,55 @@
+<!-- /Users/mymac/zutsuu/assets/kiabou/personas/index.html -->
+<!-- 5種類のキャラクター衣装を実際の3D素材で見比べる。 -->
+<!-- ぎゃる・らっぱーなどの外観と、対応する寝姿を確認するため。 -->
+<!-- 関連: viewer.js, catalog.json, README.md, build_personas.py -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>いろんなきあぼう — 衣装の3D素材</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+  <script type="module" src="viewer.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f3ef; color: #2c3b46; font: 15px/1.7 system-ui,sans-serif; }
+    main { max-width: 1240px; padding: 36px 26px; margin: auto; }
+    h1 { font-size: clamp(26px,3vw,36px); font-weight: 550; margin: 4px 0; letter-spacing: .04em; }
+    .eyebrow { font-size: 12px; letter-spacing: .15em; color: #536570; }
+    p { color: #536570; margin: 8px 0; }
+    .controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+    label { display: grid; gap: 4px; font-size: 13px; }
+    button,select,.download { min-height: 44px; padding: 9px 16px; border: 1px solid #bec8cd; border-radius: 10px; background: #fafaf8; color: #2c3b46; font: inherit; }
+    button,select { cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    :focus-visible { outline: 3px solid #254c69; outline-offset: 3px; }
+    .cards { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 18px; }
+    article { grid-column: span 2; background: #fafaf8; border-radius: 24px; padding: 22px; min-width: 0; }
+    article:nth-child(-n+2) { grid-column: span 3; }
+    h2 { font-size: 22px; font-weight: 550; margin: 0; }
+    .number { font: 12px/1.8 ui-monospace,monospace; color: #536570; }
+    .description { font-size: 13px; }
+    model-viewer { width: 100%; height: 350px; display: block; }
+    article:nth-child(-n+2) model-viewer { height: 390px; }
+    .status { min-height: 22px; font-size: 12px; }
+    .links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .download { text-decoration: none; font-size: 13px; }
+    footer { margin-top: 24px; color: #536570; font-size: 13px; }
+    footer a { color: #254c69; }
+    @media(max-width:740px) { .cards { grid-template-columns:1fr; } article, article:nth-child(-n+2) { grid-column: auto; } main { padding:24px 18px; } }
+  </style>
+</head>
+<body><main>
+  <span class="eyebrow">KIABOU / CHARACTER CLOSET</span>
+  <h1>いろんなきあぼう。</h1>
+  <p>顔はいつものまま。好きな雰囲気に着替える5種類。</p>
+  <div class="controls">
+    <label>見る姿<select id="look"><option value="costume">衣装あり</option><option value="plain">色だけ</option><option value="covered">休む姿</option></select></label>
+    <button id="motion">泳ぎを再生</button><button id="reset">向きを戻す</button>
+  </div>
+  <div class="cards" id="cards"></div>
+  <footer>
+    GLB・USDZともに画像を同梱。休む姿では衣装を外しています。<br>
+    確認用ビューアの初回表示にはネット接続が必要です。
+    <a href="README.md">素材の仕様</a> · <a href="../variations/">空模様シリーズ</a>
+  </footer>
+</main></body></html>

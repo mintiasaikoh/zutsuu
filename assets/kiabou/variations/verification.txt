@@ -1,0 +1,15 @@
+# /Users/mymac/zutsuu/assets/kiabou/variations/verification.txt
+# 配布素材の最終検証結果。
+# 完成判定の根拠を実装担当へ残すため。
+# 関連: verify_assets.py, catalog.json, ASSETS.md
+
+CHECKED kasumi-plain loop/motion/origin/scale
+CHECKED kasumi-pattern loop/motion/origin/scale
+CHECKED shizuku-plain loop/motion/origin/scale
+CHECKED shizuku-pattern loop/motion/origin/scale
+CHECKED komorebi-plain loop/motion/origin/scale
+CHECKED komorebi-pattern loop/motion/origin/scale
+VERIFIED 25 GLB/USDZ pairs; 6 animated characters; 6 interchangeable rest sets
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 01:35:57)
+
+Blender quit

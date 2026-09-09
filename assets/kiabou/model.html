@@ -1,0 +1,66 @@
+<!-- /Users/mymac/zutsuu/assets/kiabou/model.html -->
+<!-- きあぼうの立体・泳ぐ動作・配布素材を確認する。 -->
+<!-- アプリへ組み込む前に、ラフに沿った見た目と動きを確認するため。 -->
+<!-- 関連: kiabou.glb, kiabou.usdz, concept.png, README.md -->
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>きあぼう — 3Dプレビュー</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f5f8fb; color: #1d3b58; font: 14px/1.8 system-ui, sans-serif; }
+  main { max-width: 980px; margin: auto; padding: 30px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  h1 { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: .06em; }
+  .caption, p { font-size: 12px; color: #6f8192; }
+  model-viewer { display: block; width: 100%; height: min(70vh, 720px); min-height: 350px; }
+  footer { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  button, a { border: 1px solid #d6e0e8; border-radius: 24px; background: white; color: #244e72; padding: 8px 18px; font: inherit; text-decoration: none; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 3px solid #336a96; outline-offset: 3px; }
+  button:disabled { opacity: .5; cursor: wait; }
+  p { text-align: center; }
+</style>
+<main>
+  <header><h1>きあぼう</h1><span class="caption">空をのんびり泳ぐ、気圧の相棒。</span></header>
+  <model-viewer id="kiabou" src="kiabou.glb" poster="preview.png" camera-controls autoplay
+    animation-name="Drift" alt="青い背中と白いお腹のマンボウ、きあぼう。小さな目と口で、上下のヒレをゆっくり動かします。"
+    camera-orbit="-18deg 82deg auto" shadow-intensity="0.4" shadow-softness="1" exposure="1"
+    interaction-prompt="none" loading="eager">
+  </model-viewer>
+  <footer>
+    <button id="toggle" disabled>読み込み中</button>
+    <button id="reset">横から見る</button>
+    <a href="kiabou.usdz" download>iOS用 USDZ</a>
+    <a href="kiabou.glb" download>GLB</a>
+    <a href="concept.png" target="_blank" rel="noopener">元のラフ</a>
+  </footer>
+  <p id="status">ドラッグで回転。ビューアの初回表示にはネット接続が必要です。</p>
+</main>
+<script>
+  const kiabou = document.querySelector('#kiabou');
+  const toggle = document.querySelector('#toggle');
+  const status = document.querySelector('#status');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) kiabou.removeAttribute('autoplay');
+  kiabou.addEventListener('load', () => {
+    toggle.disabled = false;
+    toggle.textContent = kiabou.paused ? '泳がせる' : '動きを止める';
+    status.textContent = 'ドラッグで回転。6秒の泳ぐデモです。気圧データとの連動は未実装です。';
+  });
+  kiabou.addEventListener('error', () => {
+    status.textContent = '3Dモデルを読み込めませんでした。接続を確認するか、USDZを開いてください。';
+  });
+  toggle.addEventListener('click', () => {
+    if (kiabou.paused) kiabou.play(); else kiabou.pause();
+    toggle.textContent = kiabou.paused ? '泳がせる' : '動きを止める';
+  });
+  document.querySelector('#reset').addEventListener('click', () => {
+    kiabou.cameraOrbit = '0deg 90deg auto';
+    kiabou.fieldOfView = 'auto';
+  });
+  setTimeout(() => {
+    if (!customElements.get('model-viewer')) status.textContent = 'ビューアを取得できませんでした。ネット接続を確認してください。';
+  }, 15000);
+</script>
+</html>

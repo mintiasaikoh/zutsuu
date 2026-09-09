@@ -16,12 +16,14 @@
 ios/ZutsuuKit/
 ├── Package.swift
 ├── Sources/RiskEngine/        # 13 ファイル
+├── Sources/KiabouUI/          # 7 ファイル + Resources/（3D 素材・背景画像）
 ├── Sources/PersonalRisk/      # 1 ファイル（依存: RiskEngine）
 ├── Tests/RiskEngineTests/     # 12 ファイル
+├── Tests/KiabouUITests/       # 3 ファイル
 └── Tests/PersonalRiskTests/   # 1 ファイル
 ```
 
-`PersonalRisk` は体調記録から通知閾値を個人化する回帰モデル（正典は `docs/personalrisk-api.md`）で、本文書のスコープ外。RiskEngine は他のターゲットに依存しない。
+`KiabouUI` は 1 タップ体調記録ときあぼう表示の UI ライブラリ（正典は `docs/kiabou-integration.md`）、`PersonalRisk` は体調記録から通知閾値を個人化する回帰モデル（正典は `docs/personalrisk-api.md`）。どちらも本文書のスコープ外。RiskEngine は他のターゲットに依存しない。
 
 | 項目 | 値 |
 |---|---|
@@ -385,8 +387,8 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 | 構成 | 件数 |
 |---|---|
-| debug | 110（RiskEngine 97 + PersonalRisk 13） |
-| release | 109（RiskEngine 96 + PersonalRisk 13） |
+| debug | 123（RiskEngine 97 + KiabouUI 13 + PersonalRisk 13） |
+| release | 122（RiskEngine 96 + KiabouUI 13 + PersonalRisk 13） |
 
 差は `#if DEBUG` の `assertionFailure` 検証（debug 3 件 / release 2 件）。
 
