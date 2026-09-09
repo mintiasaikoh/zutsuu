@@ -23,8 +23,16 @@
 
 | 部 | タスク | 状態 | コミット |
 |---|---|---|---|
-| A | Task 1–5（AppCore） | 完了 | （本コミット） |
-| B | Task 6–9（ZutsuuApp） | 未着手。前提条件を下記に記す | — |
+| A | Task 1–5（AppCore） | 完了 | `465b52c` |
+| B | Task 6–9（ZutsuuApp） | 実装済み・シミュレータで起動確認済み。**WeatherKit の実データは未検証**（下記） | （本コミット） |
+
+### Part B の検証状況（2026-09-09）
+
+- xcodegen 生成・Swift 6 strict concurrency・警告エラー化でビルド成功。CI にもシミュレータビルドを追加
+- iPhone 17 Pro シミュレータで起動、位置情報ダイアログ（説明文つき）→ 位置取得 → WeatherKit へのリクエスト送信までログで確認
+- WeatherKit は `WDSJWTAuthenticatorServiceProxy.Errors error 0` で失敗。**Developer Portal で App ID `com.mintiasaikoh.zutsuu` に WeatherKit capability を有効化するまで実データは取れない**（Bundle ID を変える場合は `project.yml` の 1 箇所）
+- SwiftData の初回起動ログに `default.store` の stat 失敗が出るが、ストア新規作成時の既知のノイズ
+- 実機での確認事項: 位置情報ダイアログが毎回出ないこと（シミュレータでは `simctl privacy grant` 後も再表示された）、通知の実発火、バックグラウンド更新
 
 ---
 

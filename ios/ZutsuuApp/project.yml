@@ -1,0 +1,60 @@
+# /Users/mymac/zutsuu/ios/ZutsuuApp/project.yml
+# xcodegen の定義。`xcodegen generate` で ZutsuuApp.xcodeproj を作る（生成物は git 管理外）。
+# Bundle ID と Team ID をここ 1 箇所に集め、WeatherKit の entitlement と揃えるため。
+# 関連: docs/plans/2026-09-09-app-layer-plan2.md Part B, ../ZutsuuKit/Package.swift
+name: ZutsuuApp
+options:
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+packages:
+  ZutsuuKit:
+    path: ../ZutsuuKit
+
+settings:
+  base:
+    # Apple Developer Program の Team ID。Bundle ID は Developer Portal で
+    # App ID として登録し、WeatherKit capability を有効化しておくこと。
+    DEVELOPMENT_TEAM: TSYS7S5FCY
+    PRODUCT_BUNDLE_IDENTIFIER: com.mintiasaikoh.zutsuu
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  ZutsuuApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    dependencies:
+      - package: ZutsuuKit
+        product: RiskEngine
+      - package: ZutsuuKit
+        product: PersonalRisk
+      - package: ZutsuuKit
+        product: KiabouUI
+      - package: ZutsuuKit
+        product: AppCore
+    entitlements:
+      path: ZutsuuApp.entitlements
+      properties:
+        com.apple.developer.weatherkit: true
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: zutsuu
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: 現在地の気象予報を取得するために使います。位置情報は端末の外へ送られません（Apple Weather への座標送信のみ）。
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.mintiasaikoh.zutsuu.refresh]

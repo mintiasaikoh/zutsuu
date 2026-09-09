@@ -1,0 +1,7 @@
+# /Users/mymac/zutsuu/ios/ZutsuuApp/.gitignore
+# xcodegen の生成物を除外する。project.yml が唯一の定義。
+# 生成された xcodeproj を管理すると project.yml との二重管理になるため。
+# 関連: project.yml
+ZutsuuApp.xcodeproj/
+ZutsuuApp.entitlements
+Info.plist

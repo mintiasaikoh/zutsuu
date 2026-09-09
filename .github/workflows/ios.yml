@@ -48,3 +48,14 @@ jobs:
 
       - name: Build (watchOS)
         run: xcodebuild build -scheme ZutsuuKit-Package -destination 'generic/platform=watchOS'
+
+      # アプリ本体（ios/ZutsuuApp）。project.yml から xcodegen で生成し、
+      # シミュレータ向けに署名なしでビルドする。パッケージの公開 API 変更で
+      # アプリ側が壊れるのをここで検出する。WeatherKit の実行は CI では検証できない。
+      - name: Build app (iOS Simulator)
+        working-directory: ios/ZutsuuApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild build -project ZutsuuApp.xcodeproj -scheme ZutsuuApp \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
