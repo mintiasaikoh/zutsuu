@@ -21,7 +21,7 @@ struct RecordButton: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .accessibilityLabel("体調が\(title)。記録する")
+        .accessibilityLabel("いまの調子は\(title)。記録する")
     }
 
     /// 「悪い」だけ塗りつぶし。休む姿へ切り替わる唯一の選択肢なので、視覚的にも際立たせる。

@@ -51,6 +51,8 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 2. **同じ `id` の再試行を重複保存しない。** 保存結果が不明なまま再試行された場合、UI は同じ `id`・`date` を渡し直す（`CheckInModelTests` が固定）
 3. **`HealthFeeling` の rawValue（`"good"` / `"normal"` / `"bad"`）は変更禁止。** 保存済みデータの互換キー。
    3 択は 2026-09-10 のユーザー決定（`.normal` を追加）。休む姿になるのは `.bad` だけ。
+   表示名は「げんき／ふつう／つらい」（`label`）。「良い/悪い」は評価の語で硬いため、
+   本人の感じ方に寄せた言葉にした（ユーザー要望）。完了文も「記録したよ。」ときあぼうの語り口で統一。
    学習（PersonalRisk）は「悪い」か否かの二値で、`.normal` は「悪くない」側に入れる
 4. `date` に対応する気象データと一緒に保存するのはアプリ層（学習の説明変数になる）
 

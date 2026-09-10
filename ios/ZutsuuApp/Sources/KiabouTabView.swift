@@ -111,7 +111,7 @@ struct KiabouTabView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("これまでの記録").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
             if records.isEmpty {
-                Text("まだ記録がありません。ホームの「良い」「普通」「悪い」から記録できます。")
+                Text("まだ記録がありません。ホームの「げんき」「ふつう」「つらい」から記録できます。")
                     .foregroundStyle(palette.muted)
             } else {
                 Text("記録 \(recordedDays) 日")

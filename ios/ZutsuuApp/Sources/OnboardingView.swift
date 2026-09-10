@@ -28,7 +28,7 @@ struct OnboardingView: View {
                 OnboardingPage(
                     symbol: "cloud.sun",
                     title: "気圧の変化を、先に知らせます",
-                    message: "気圧・湿度・気温・雨から、今後 72 時間の体調リスクを計算します。大きな変化の 90 分前に通知が届きます。",
+                    message: "気圧・湿度・気温・雨から、これから 72 時間で調子が崩れやすい時間を見つけます。大きな変化の 90 分前にお知らせします。",
                     action: "つぎへ", palette: palette) { page = 1 }
                     .tag(0)
                 OnboardingPage(

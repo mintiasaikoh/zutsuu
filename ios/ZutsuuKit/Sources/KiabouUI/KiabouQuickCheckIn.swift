@@ -40,12 +40,12 @@ public struct KiabouQuickCheckIn: View {
             }
 
             if model.isResting {
-                Text("体調を記録しました。ゆっくり、休んでね。")
+                Text("記録したよ。ゆっくり、休んでね。")
                     .foregroundStyle(palette.muted)
-                Button("体調の入力に戻る") { model.returnToCheckIn() }
+                Button("もどる") { model.returnToCheckIn() }
                     .frame(minHeight: 44)
             } else {
-                Text("いまの体調は？").font(.headline)
+                Text("いまの調子は？").font(.headline)
                 HStack(spacing: 10) {
                     ForEach(HealthFeeling.allCases, id: \.self) { feeling in
                         RecordButton(title: feeling.label, feeling: feeling, palette: palette,
@@ -55,7 +55,7 @@ public struct KiabouQuickCheckIn: View {
                 if model.isSaving {
                     Text("記録しています…").foregroundStyle(palette.muted)
                 } else if model.lastRecord != nil && model.errorMessage == nil {
-                    Text("体調を記録しました。").foregroundStyle(palette.muted)
+                    Text("記録したよ。").foregroundStyle(palette.muted)
                 }
             }
             if let error = model.errorMessage {

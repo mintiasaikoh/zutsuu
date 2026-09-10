@@ -29,7 +29,7 @@ public struct KiabouCheckInView: View {
             VStack(spacing: 20) {
                 VStack(spacing: 12) {
                     Text("きあぼう").font(.subheadline.weight(.medium)).foregroundStyle(palette.muted)
-                    Text(model.isResting ? "ゆっくり、休んでね。" : "いまの体調は？")
+                    Text(model.isResting ? "ゆっくり、休んでね。" : "いまの調子は？")
                         .font(.title2.weight(.semibold))
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityFocused($headingFocused)
@@ -45,9 +45,9 @@ public struct KiabouCheckInView: View {
                     .padding(.horizontal, -24)
 
                 if model.isResting {
-                    Text("体調を記録しました。\nこのまま、画面を閉じて大丈夫。")
+                    Text("記録したよ。\nこのまま、画面を閉じて大丈夫。")
                         .multilineTextAlignment(.center).foregroundStyle(palette.muted)
-                    Button("体調の入力に戻る") {
+                    Button("もどる") {
                         model.returnToCheckIn()
                         headingFocused = true
                     }
@@ -62,7 +62,7 @@ public struct KiabouCheckInView: View {
                     if model.isSaving {
                         Text("記録しています…").foregroundStyle(palette.muted)
                     } else if model.lastRecord != nil && model.errorMessage == nil {
-                        Text("体調を記録しました。")
+                        Text("記録したよ。")
                             .foregroundStyle(palette.muted).accessibilityAddTraits(.updatesFrequently)
                     }
                 }
