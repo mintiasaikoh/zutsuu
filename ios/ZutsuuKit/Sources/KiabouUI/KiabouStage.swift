@@ -19,9 +19,9 @@ struct KiabouStage: View {
 
     var body: some View {
         ZStack {
-            if cove {
+            if cove, let coveImage = Self.bundledImage("cove") {
                 GeometryReader { geometry in
-                    Image("cove", bundle: .module)
+                    coveImage
                         .resizable().scaledToFill()
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
@@ -51,8 +51,8 @@ struct KiabouStage: View {
             .brightness(dim ? -0.18 : 0)
             .allowsHitTesting(false)
 
-            if !ready {
-                Image(resting ? "covered" : "preview", bundle: .module)
+            if !ready, let placeholder = Self.bundledImage(resting ? "covered" : "preview") {
+                placeholder
                     .resizable().scaledToFit().padding(28)
                     .brightness(dim ? -0.18 : 0)
             }
@@ -69,6 +69,17 @@ struct KiabouStage: View {
         .task(id: resting) { await scene.load(resting: resting) }
         .onAppear { visible = true }
         .onDisappear { visible = false; scene.stop() }
+    }
+
+    /// SwiftUI の `Image(_:bundle:)` は SPM リソースバンドル直下の PNG を
+    /// 見つけられない（アセットカタログしか探さず、静かに空を描く。実測）。
+    /// UIKit / AppKit 経由で読む。
+    static func bundledImage(_ name: String) -> Image? {
+        #if os(iOS)
+        UIImage(named: name, in: .module, with: nil).map(Image.init(uiImage:))
+        #else
+        Bundle.module.image(forResource: name).map(Image.init(nsImage:))
+        #endif
     }
 }
 #endif

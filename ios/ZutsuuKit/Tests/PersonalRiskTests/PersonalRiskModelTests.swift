@@ -126,19 +126,33 @@ struct PersonalRiskModelTests {
         #expect(PersonalRiskModel.prior(for: []) == .generic)
     }
 
-    /// 気圧の申告は変化とベースラインの両方を傾ける。他の申告は対応する 1 要因だけ。
-    @Test("申告は対応する要因の事前重みだけを引き上げる")
-    func declarationTiltsOnlyMatchingWeights() {
+    /// 気象要因は独立ではない（雨の日は高湿で、気圧の変化を伴う）。
+    /// 申告は主要因を大きく、気象的に相関する要因を小さく傾ける。
+    @Test("申告は主要因を大きく、相関する要因を小さく傾ける")
+    func declarationTiltsMainAndRelatedWeights() {
         let humid = PersonalRiskModel.prior(for: [.humidity])
         #expect(humid.humidity == 1 + PersonalRiskModel.declarationTilt)
-        #expect(humid.pressureChange == 1 && humid.precipitation == 1
-                && humid.temperature == 1)
+        #expect(humid.precipitation == 1 + PersonalRiskModel.relatedTilt)
+        #expect(humid.pressureChange == 1 && humid.temperature == 1)
         #expect(humid.intercept == PersonalRiskModel.generic.intercept)
+
+        let rain = PersonalRiskModel.prior(for: [.rain])
+        #expect(rain.precipitation == 1 + PersonalRiskModel.declarationTilt)
+        #expect(rain.humidity == 1 + PersonalRiskModel.relatedTilt)
+        #expect(rain.pressureChange == 1 + PersonalRiskModel.relatedTilt)
+        #expect(rain.temperature == 1)
 
         let pressure = PersonalRiskModel.prior(for: [.pressure])
         #expect(pressure.pressureChange == 1 + PersonalRiskModel.declarationTilt)
         #expect(pressure.pressureBaseline == 1 + PersonalRiskModel.declarationTilt)
         #expect(pressure.humidity == 1)
+
+        // 複数申告は加算。クランプ範囲 [0, 3] を超えない組み合わせであること。
+        let all = PersonalRiskModel.prior(for: Set(DeclaredSensitivity.allCases))
+        for weight in [all.pressureChange, all.pressureBaseline, all.humidity,
+                       all.precipitation, all.temperature] {
+            #expect(weight <= PersonalRiskModel.weightRange.upperBound)
+        }
     }
 
     /// 申告の価値は記録ゼロの初日から通知閾値に効くこと。

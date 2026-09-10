@@ -110,22 +110,42 @@ public enum DeclaredSensitivity: String, Codable, Sendable, Hashable, CaseIterab
 }
 
 extension PersonalRiskModel {
-    /// 申告 1 件が事前重みを引き上げる量（1 → 1.75）。
+    /// 申告 1 件が主要因の事前重みを引き上げる量（1 → 1.75）。
     /// クランプ上限 3 の内側に収まり、記録による上書きの余地を十分残す設計値。
     /// 実データでの検証は priorWeight と同じく v1.1 有効化前の宿題（正典 §6）。
     public static let declarationTilt = 0.75
+    /// 気象的に相関する要因への傾け。主要因の半分以下に抑える。
+    public static let relatedTilt = 0.35
 
     /// 体質申告から事前分布モデルを作る。申告なしなら `.generic` と同一。
+    ///
+    /// **気象要因は独立ではない**ことを大前提に置く（設計書 §6.5）。雨の日は湿度が
+    /// 高く、低気圧・気圧変化を伴うことが多い。本人が「雨に弱い」と名指しした要因が
+    /// 実際の機序とは限らないため、申告は主要因を大きく、相関する要因を小さく傾ける。
+    /// どれが本当に効いているかの切り分けは、記録が溜まってから回帰が行う。
     public static func prior(for sensitivities: Set<DeclaredSensitivity>) -> PersonalRiskModel {
-        func tilt(_ sensitivity: DeclaredSensitivity) -> Double {
-            sensitivities.contains(sensitivity) ? 1 + declarationTilt : 1
+        // [気圧変化, 気圧ベースライン, 湿度, 降水, 気温]
+        var tilt = [Double](repeating: 0, count: 5)
+        for sensitivity in sensitivities {
+            switch sensitivity {
+            case .pressure:
+                tilt[0] += declarationTilt
+                tilt[1] += declarationTilt
+            case .rain:
+                tilt[3] += declarationTilt
+                tilt[2] += relatedTilt   // 雨の日は湿度が高い
+                tilt[0] += relatedTilt   // 降水は気圧の変化を伴う
+            case .humidity:
+                tilt[2] += declarationTilt
+                tilt[3] += relatedTilt   // 高湿は降水と重なる
+            case .temperatureSwing:
+                tilt[4] += declarationTilt
+                tilt[0] += relatedTilt   // 前線通過は寒暖差と気圧変化が同時に来る
+            }
         }
-        return PersonalRiskModel(pressureChange: tilt(.pressure),
-                                 pressureBaseline: tilt(.pressure),
-                                 humidity: tilt(.humidity),
-                                 precipitation: tilt(.rain),
-                                 temperature: tilt(.temperatureSwing),
-                                 intercept: generic.intercept)
+        return PersonalRiskModel(pressureChange: 1 + tilt[0], pressureBaseline: 1 + tilt[1],
+                                 humidity: 1 + tilt[2], precipitation: 1 + tilt[3],
+                                 temperature: 1 + tilt[4], intercept: generic.intercept)
     }
 
     /// 事前分布を中心に置いた MAP 推定（L2 罰則付きロジスティック回帰）。

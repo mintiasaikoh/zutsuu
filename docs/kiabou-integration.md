@@ -95,6 +95,11 @@ speed setter は内部で毎回 os_log を発行し、毎フレーム × コン�
 同じ理由で `playAnimations` はアニメーションを持つ階層で再帰を止める — 子孫まで下りると
 同じアニメーションを骨の数だけ重複再生してコントローラが膨らむ。
 
+**SwiftUI の `Image(_:bundle:)` で SPM のリソース PNG を読まないこと。** アセットカタログしか
+探さず、バンドル直下の PNG では**静かに空を描く**（エラーも nil もない。入り江の背景が
+出なかった原因）。`UIImage(named:in:with:)` / `Bundle.image(forResource:)` 経由で読む
+（`KiabouStage.bundledImage(_:)`）。
+
 ## 5. プラットフォーム
 
 View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `#if os(iOS) || os(macOS)`。`HealthCheckIn` / `CheckInModel` / `PinkMotion` は全プラットフォームでコンパイルされる。
