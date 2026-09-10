@@ -22,7 +22,7 @@ ios/ZutsuuKit/Tests/PersonalRiskTests/
 
 ### `SymptomObservation: Sendable, Hashable`
 
-学習の 1 標本。`factors: RiskFactors` と `wasBad: Bool`。体調記録（`HealthCheckIn`）と同時刻の気象からの要因算出・突き合わせはアプリ層の責務。
+学習の 1 標本。`factors: RiskFactors` と `wasBad: Bool`。体調記録（`HealthCheckIn`）と同時刻の気象からの要因算出・突き合わせはアプリ層の責務。体調は 3 択（良い・普通・悪い）だが、通知の判定は「悪くなるか」なので学習は二値 — **「普通」は「悪くない」側**（`wasBad = false`）。順序回帰への拡張は記録が溜まってから検討。
 
 ### `DeclaredSensitivity: String, Codable, Sendable, Hashable, CaseIterable`
 

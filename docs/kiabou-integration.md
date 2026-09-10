@@ -49,7 +49,9 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 
 1. **`onRecord` が正常終了したときだけ保存成功とみなされる。** 例外を握りつぶして戻ると、保存できていない記録が「記録しました」と表示される
 2. **同じ `id` の再試行を重複保存しない。** 保存結果が不明なまま再試行された場合、UI は同じ `id`・`date` を渡し直す（`CheckInModelTests` が固定）
-3. **`HealthFeeling` の rawValue（`"good"` / `"bad"`）は変更禁止。** 保存済みデータの互換キー
+3. **`HealthFeeling` の rawValue（`"good"` / `"normal"` / `"bad"`）は変更禁止。** 保存済みデータの互換キー。
+   3 択は 2026-09-10 のユーザー決定（`.normal` を追加）。休む姿になるのは `.bad` だけ。
+   学習（PersonalRisk）は「悪い」か否かの二値で、`.normal` は「悪くない」側に入れる
 4. `date` に対応する気象データと一緒に保存するのはアプリ層（学習の説明変数になる）
 
 ## 3. UI の意図的な決定

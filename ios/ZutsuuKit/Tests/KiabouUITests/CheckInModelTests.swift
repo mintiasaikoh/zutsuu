@@ -40,6 +40,18 @@ struct CheckInModelTests {
         #expect(!model.isResting)
     }
 
+    /// 休む姿に切り替わるのは「悪い」だけ。「普通」は記録として残るが休まない。
+    @Test("「普通」は記録されるが休む表示にはならない")
+    func normalDoesNotRest() async {
+        let spy = SaveSpy()
+        let model = CheckInModel(save: spy.save)
+
+        await model.record(.normal)
+        #expect(spy.attempts.map(\.feeling) == [.normal])
+        #expect(model.lastRecord?.feeling == .normal)
+        #expect(!model.isResting)
+    }
+
     @Test("保存失敗は成功と表示せず、エラーメッセージを出す")
     func failedSave() async {
         let spy = SaveSpy()

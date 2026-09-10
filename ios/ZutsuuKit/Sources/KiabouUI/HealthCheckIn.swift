@@ -4,9 +4,21 @@
 // 関連: CheckInModel.swift, KiabouCheckInView.swift, docs/kiabou-integration.md
 import Foundation
 
-public enum HealthFeeling: String, Codable, Sendable {
+/// rawValue は保存キー。変更・削除禁止（追加は可）。
+/// 学習（PersonalRisk）は「悪い」か否かの二値で使う: `.good` と `.normal` は「悪くない」。
+public enum HealthFeeling: String, Codable, Sendable, CaseIterable {
     case good
+    case normal
     case bad
+
+    /// 表示名（日本語、ローカライズ前の暫定）。
+    public var label: String {
+        switch self {
+        case .good: "良い"
+        case .normal: "普通"
+        case .bad: "悪い"
+        }
+    }
 }
 
 /// アプリ層は、この時刻に対応する気象データと一緒に保存する。

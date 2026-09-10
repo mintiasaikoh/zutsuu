@@ -21,7 +21,10 @@ struct PublicAPITests {
     @Test("HealthFeelingのrawValueは安定している")
     func stableRawValues() {
         #expect(HealthFeeling.good.rawValue == "good")
+        #expect(HealthFeeling.normal.rawValue == "normal")
         #expect(HealthFeeling.bad.rawValue == "bad")
+        // 表示順 = 良い・普通・悪い。ボタンの並びがこの順に依存する。
+        #expect(HealthFeeling.allCases == [.good, .normal, .bad])
     }
 
     @Test("HealthCheckInはCodableで往復できる")

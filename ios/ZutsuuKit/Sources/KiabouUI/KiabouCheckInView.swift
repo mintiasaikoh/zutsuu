@@ -53,11 +53,11 @@ public struct KiabouCheckInView: View {
                     }
                     .frame(minHeight: 44)
                 } else {
-                    HStack(spacing: 12) {
-                        RecordButton(title: "良い", feeling: .good, palette: palette,
-                                     disabled: model.isSaving) { Task { await model.record(.good) } }
-                        RecordButton(title: "悪い", feeling: .bad, palette: palette,
-                                     disabled: model.isSaving) { Task { await model.record(.bad) } }
+                    HStack(spacing: 10) {
+                        ForEach(HealthFeeling.allCases, id: \.self) { feeling in
+                            RecordButton(title: feeling.label, feeling: feeling, palette: palette,
+                                         disabled: model.isSaving) { Task { await model.record(feeling) } }
+                        }
                     }
                     if model.isSaving {
                         Text("記録しています…").foregroundStyle(palette.muted)
