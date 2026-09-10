@@ -12,6 +12,7 @@ public struct KiabouQuickCheckIn: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("kiabou.native.cove") private var cove = true
     @AppStorage("kiabou.native.dim") private var dim = false
+    @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
     @State private var model: CheckInModel
     private let recordedDays: Int?
     private let showsStage: Bool
@@ -31,7 +32,8 @@ public struct KiabouQuickCheckIn: View {
         VStack(spacing: 12) {
             if showsStage {
                 KiabouStage(resting: model.isResting, cove: cove, dim: dim,
-                            moving: !reduceMotion && scenePhase == .active)
+                            moving: !reduceMotion && scenePhase == .active,
+                            outfit: .outfit(id: outfitID))
                     // ホームの above the fold に「今のリスク → 次の通知 → 記録ボタン」を収める高さ。
                     .frame(height: 150)
                     .clipShape(RoundedRectangle(cornerRadius: 20))

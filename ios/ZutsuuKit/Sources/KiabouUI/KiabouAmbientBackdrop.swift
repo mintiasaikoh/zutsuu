@@ -10,6 +10,7 @@ import SwiftUI
 /// Reduce Motion 時は呼び出し側でこのレイヤー自体を出さないこと（§3.1）。
 public struct KiabouAmbientBackdrop: View {
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
     @State private var scene = KiabouScene(ambient: true)
     @State private var visible = false
 
@@ -31,7 +32,9 @@ public struct KiabouAmbientBackdrop: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .task { await scene.load(resting: false) }
+        .task(id: outfitID) {
+            await scene.load(outfit: .outfit(id: outfitID), resting: false)
+        }
         .onAppear { visible = true }
         .onDisappear { visible = false; scene.stop() }
     }

@@ -6,18 +6,29 @@
 import RealityKit
 import SwiftUI
 
-struct KiabouStage: View {
+/// きあぼうの舞台（背景 + 3D）。記録ビューときあぼうタブが共用する。
+public struct KiabouStage: View {
     let resting: Bool
     let cove: Bool
     let dim: Bool
     let moving: Bool
+    var outfit: KiabouOutfit = .original
     @State private var scene = KiabouScene()
     @State private var visible = false
+
+    public init(resting: Bool, cove: Bool, dim: Bool, moving: Bool,
+                outfit: KiabouOutfit = .original) {
+        self.resting = resting
+        self.cove = cove
+        self.dim = dim
+        self.moving = moving
+        self.outfit = outfit
+    }
 
     private var ready: Bool { scene.loadedResting == resting }
     private var running: Bool { moving && visible && ready }
 
-    var body: some View {
+    public var body: some View {
         ZStack {
             if cove, let coveImage = Self.bundledImage("cove") {
                 GeometryReader { geometry in
@@ -66,7 +77,7 @@ struct KiabouStage: View {
                     .font(.caption).foregroundStyle(KiabouPalette(dim: dim).muted)
             }
         }
-        .task(id: resting) { await scene.load(resting: resting) }
+        .task(id: "\(outfit.id)#\(resting)") { await scene.load(outfit: outfit, resting: resting) }
         .onAppear { visible = true }
         .onDisappear { visible = false; scene.stop() }
     }

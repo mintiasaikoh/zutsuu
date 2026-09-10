@@ -14,7 +14,7 @@ final class KiabouScene {
     // 以下は描画ループの内部状態。`RealityView` の `update:` 内から書き換えるため、
     // 観測対象にすると「書き換え → 再描画 → update → 書き換え」の無限ループになり
     // メインスレッドが止まる（実測）。画面が見るのは loadedResting と failed だけ。
-    @ObservationIgnored private var models: [Bool: Entity] = [:]
+    @ObservationIgnored private var models: [String: Entity] = [:]
     @ObservationIgnored private var animations: [AnimationPlaybackController] = []
     @ObservationIgnored private var subscription: EventSubscription?
     @ObservationIgnored private var motion = PinkMotion()
@@ -47,29 +47,31 @@ final class KiabouScene {
         }
     }
 
-    func load(resting: Bool) async {
+    func load(outfit: KiabouOutfit = .original, resting: Bool) async {
         self.resting = resting
         failed = false
         setMotion(enabled: false)
         loadedResting = nil
+        let key = "\(outfit.id)#\(resting)"
         do {
             let model: Entity
-            if let cached = models[resting] {
+            if let cached = models[key] {
                 model = cached
             } else {
-                model = try await Entity(named: resting ? "covered.usdz" : "kiabou.usdz", in: .module)
+                model = try await Entity(named: resting ? outfit.coveredResource
+                                                        : outfit.swimResource, in: .module)
                 try Task.checkCancellation()
                 // 素材の中心だけを合わせ、骨格のローカル変換は保持する。
                 let centered = Entity()
                 centered.addChild(model)
                 model.position -= model.visualBounds(relativeTo: centered).center
-                models[resting] = centered
+                models[key] = centered
             }
             try Task.checkCancellation()
             animations.forEach { $0.stop() }
             animations = []
             drift.children.removeAll()
-            drift.addChild(models[resting] ?? model)
+            drift.addChild(models[key] ?? model)
             if ambient {
                 // 正面から少し引いた固定カメラ。モデルを小さくし、画面を横切る余地を作る。
                 drift.scale = [0.68, 0.68, 0.68]
@@ -79,7 +81,7 @@ final class KiabouScene {
                             from: resting ? [-0.30, 0.44, 0.43] : [-0.20, 0.09, 0.65],
                             relativeTo: nil)
             }
-            if !resting { playAnimations(in: models[resting] ?? model) }
+            if !resting { playAnimations(in: models[key] ?? model) }
             loadedResting = resting
         } catch is CancellationError {
             // 休む/戻るの連打で古い読み込みが終わっても画面を上書きしない。

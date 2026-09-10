@@ -12,6 +12,7 @@ public struct KiabouCheckInView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("kiabou.native.cove") private var cove = true
     @AppStorage("kiabou.native.dim") private var dim = false
+    @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
     @State private var model: CheckInModel
     @State private var motionOverride: Bool?
     @AccessibilityFocusState private var headingFocused: Bool
@@ -38,7 +39,8 @@ public struct KiabouCheckInView: View {
                 .multilineTextAlignment(.center)
 
                 KiabouStage(resting: model.isResting, cove: cove, dim: dim,
-                            moving: motionEnabled && scenePhase == .active)
+                            moving: motionEnabled && scenePhase == .active,
+                            outfit: .outfit(id: outfitID))
                     .frame(height: 300)
                     .padding(.horizontal, -24)
 

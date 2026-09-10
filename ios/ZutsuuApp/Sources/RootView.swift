@@ -23,8 +23,9 @@ struct RootView: View {
                 Tab("今日", systemImage: "cloud.sun", value: AppTab.today.rawValue) {
                     TodayView()
                 }
-                Tab("記録", systemImage: "heart.text.square", value: AppTab.checkIn.rawValue) {
-                    KiabouCheckInView(onRecord: pipeline.record)
+                // 記録の入口はホームに一本化。このタブは着せ替えとログの場所（Plan 3 Task 7）。
+                Tab("きあぼう", systemImage: "fish", value: AppTab.checkIn.rawValue) {
+                    KiabouTabView()
                 }
                 Tab("設定", systemImage: "gearshape", value: AppTab.settings.rawValue) {
                     SettingsView()

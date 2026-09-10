@@ -16,11 +16,11 @@
 ios/ZutsuuKit/
 ├── Package.swift
 ├── Sources/RiskEngine/        # 13 ファイル
-├── Sources/KiabouUI/          # 7 ファイル + Resources/（3D 素材・背景画像）
+├── Sources/KiabouUI/          # 11 ファイル + Resources/（3D 素材・着せ替え・背景画像）
 ├── Sources/PersonalRisk/      # 1 ファイル（依存: RiskEngine）
 ├── Sources/AppCore/           # 5 ファイル（依存: RiskEngine）
 ├── Tests/RiskEngineTests/     # 12 ファイル
-├── Tests/KiabouUITests/       # 3 ファイル
+├── Tests/KiabouUITests/       # 4 ファイル
 ├── Tests/PersonalRiskTests/   # 1 ファイル
 └── Tests/AppCoreTests/        # 5 ファイル
 ```
@@ -385,8 +385,8 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 
 | 構成 | 件数 |
 |---|---|
-| debug | 146（RiskEngine 97 + KiabouUI 13 + PersonalRisk 13 + AppCore 23） |
-| release | 145（RiskEngine 96 + KiabouUI 13 + PersonalRisk 13 + AppCore 23） |
+| debug | 149（RiskEngine 97 + KiabouUI 16 + PersonalRisk 13 + AppCore 23） |
+| release | 148（RiskEngine 96 + KiabouUI 16 + PersonalRisk 13 + AppCore 23） |
 
 差は `#if DEBUG` の `assertionFailure` 検証（debug 3 件 / release 2 件）。
 
