@@ -82,7 +82,7 @@ final class ForecastPipeline {
     /// `KiabouCheckInView(onRecord:)` に渡す。保存に成功したときだけ戻る。
     /// 記録時点の要因を一緒に保存し、その場で通知閾値を学習し直す。
     func record(_ checkIn: HealthCheckIn) async throws {
-        try store.save(checkIn, factors: risk(at: checkIn.date)?.assessment.factors)
+        try store.save(checkIn, risk: risk(at: checkIn.date))
         recordedDays = (try? store.recordedDayCount(calendar: .current)) ?? recordedDays
         await rescheduleNotifications(now: Date())
     }

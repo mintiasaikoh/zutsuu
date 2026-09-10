@@ -71,6 +71,10 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
   素材の同梱漏れはテスト（`KiabouOutfitTests.resourcesAreBundled`）で防ぐ
 - ロック中の表示は「あと N 日」の予告だけ。派手な演出や記録を迫る文言は出さない（§6.7）
 - 解放判定の記録日数はきあぼうタブが SwiftData から直接数える（予報の取得を待たない）
+- **記録ログには日時・良い/悪いに加えて、その時の天気の特徴を添える**（2026-09-10、ユーザー要望）。
+  記録時に `HourlyRisk` の生値（レベル・気圧 hPa・3 時間変化・湿度%・降水確率%・気温℃）を
+  `CheckInRecord` に optional で保存し、「安心 · 1018 hPa · 3時間で1hPa上昇 · 23℃」の形で出す。
+  生値のない古い記録は要因名だけ（「高い湿度 · 降水」）。文面は記述のみで評価語を付けない
 
 ### 3.1 背面遊泳モード（2026-09-10、ユーザー提案）
 

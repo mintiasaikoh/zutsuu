@@ -21,17 +21,37 @@ final class CheckInRecord {
     var humidity: Int
     var precipitation: Int
     var temperature: Int
+    /// 記録時点の気象の生値とレベル。ログ表示用（学習には点数のほうを使う）。
+    /// 後から足した optional なので、古い記録では nil。
+    var levelRaw: Int?
+    var pressureHPa: Double?
+    var pressureChange3h: Double?
+    var humidityPercent: Double?
+    var precipitationChance: Double?
+    var temperatureC: Double?
 
-    init(checkIn: HealthCheckIn, factors: RiskFactors?) {
+    init(checkIn: HealthCheckIn, risk: HourlyRisk?) {
         id = checkIn.id
         date = checkIn.date
         feeling = checkIn.feeling.rawValue
+        let factors = risk?.assessment.factors
         hasFactors = factors != nil
         pressureChange = factors?.pressureChange ?? 0
         pressureBaseline = factors?.pressureBaseline ?? 0
         humidity = factors?.humidity ?? 0
         precipitation = factors?.precipitation ?? 0
         temperature = factors?.temperature ?? 0
+        levelRaw = risk?.assessment.level.rawValue
+        pressureHPa = risk?.point.pressure
+        pressureChange3h = risk?.pressureChanges.threeHour
+        humidityPercent = risk?.point.humidity
+        precipitationChance = risk?.point.precipitationChance
+        temperatureC = risk?.point.temperature
+    }
+
+    var factors: RiskFactors {
+        RiskFactors(pressureChange: pressureChange, pressureBaseline: pressureBaseline,
+                    humidity: humidity, precipitation: precipitation, temperature: temperature)
     }
 }
 
@@ -44,12 +64,12 @@ final class CheckInStore {
     }
 
     /// 同じ ID が既にあれば何もしない（保存結果が不明な再試行への備え）。
-    func save(_ checkIn: HealthCheckIn, factors: RiskFactors?) throws {
+    func save(_ checkIn: HealthCheckIn, risk: HourlyRisk?) throws {
         let id = checkIn.id
         var descriptor = FetchDescriptor<CheckInRecord>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
         if try context.fetchCount(descriptor) > 0 { return }
-        context.insert(CheckInRecord(checkIn: checkIn, factors: factors))
+        context.insert(CheckInRecord(checkIn: checkIn, risk: risk))
         try context.save()
     }
 
@@ -57,13 +77,8 @@ final class CheckInStore {
     func observations() throws -> [SymptomObservation] {
         let descriptor = FetchDescriptor<CheckInRecord>(predicate: #Predicate { $0.hasFactors })
         return try context.fetch(descriptor).map { record in
-            SymptomObservation(
-                factors: RiskFactors(pressureChange: record.pressureChange,
-                                     pressureBaseline: record.pressureBaseline,
-                                     humidity: record.humidity,
-                                     precipitation: record.precipitation,
-                                     temperature: record.temperature),
-                wasBad: record.feeling == HealthFeeling.bad.rawValue)
+            SymptomObservation(factors: record.factors,
+                               wasBad: record.feeling == HealthFeeling.bad.rawValue)
         }
     }
 

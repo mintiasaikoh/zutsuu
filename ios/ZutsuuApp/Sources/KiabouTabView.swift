@@ -118,15 +118,22 @@ struct KiabouTabView: View {
                     .font(.footnote.monospacedDigit()).foregroundStyle(palette.muted)
                 VStack(spacing: 0) {
                     ForEach(records.prefix(60)) { record in
-                        HStack {
-                            Text(record.date.formatted(.dateTime.month().day().weekday()
-                                .hour().minute()))
-                                .monospacedDigit()
-                            Spacer()
-                            Text(record.feeling == HealthFeelingBadRaw ? "悪い" : "良い")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(record.feeling == HealthFeelingBadRaw
-                                                 ? palette.ink : palette.muted)
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text(record.date.formatted(.dateTime.month().day().weekday()
+                                    .hour().minute()))
+                                    .monospacedDigit()
+                                Spacer()
+                                Text(record.feeling == HealthFeelingBadRaw ? "悪い" : "良い")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(record.feeling == HealthFeelingBadRaw
+                                                     ? palette.ink : palette.muted)
+                            }
+                            if let weather = RecordWeatherText.summary(for: record) {
+                                Text(weather)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(palette.muted)
+                            }
                         }
                         .font(.subheadline)
                         .padding(.vertical, 8)
