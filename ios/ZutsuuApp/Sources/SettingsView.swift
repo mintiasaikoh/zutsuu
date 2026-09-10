@@ -48,9 +48,9 @@ struct SettingsView: View {
                 Section {
                     SensitivityToggles { Task { await pipeline.refresh() } }
                 } header: {
-                    Text("不調になりやすい条件")
+                    Text("心当たりのある条件")
                 } footer: {
-                    Text("記録が少ないうちの通知の目安に使います。記録が増えると、実際の記録のほうが優先されます。")
+                    Text("わからないままで大丈夫です。記録が少ないうちの通知の目安に使うだけで、記録が増えると実際の記録のほうが優先されます。")
                 }
             }
             .navigationTitle("設定")

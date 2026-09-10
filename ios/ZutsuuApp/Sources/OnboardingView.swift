@@ -64,13 +64,16 @@ struct OnboardingView: View {
         .tint(palette.primary)
     }
 
+    /// 「わからない」が既定の道。研究上、本人が信じる引き金と実際の引き金は
+    /// よくずれる（docs/research/2026-09-10-weather-attribution.md §1.1）。
+    /// 申告は任意の心当たりに留め、見つけるのはアプリの仕事だと明示する。
     private var sensitivityPage: some View {
         VStack(spacing: 20) {
             Image(systemName: "person.crop.circle.badge.questionmark")
                 .font(.system(size: 48)).foregroundStyle(palette.primary)
-            Text("不調になりやすい条件は？")
+            Text("心当たりはありますか？")
                 .font(.title2.weight(.semibold)).multilineTextAlignment(.center)
-            Text("任意です。記録が少ないうちの通知の目安に使い、記録が増えると実際の記録のほうが優先されます。")
+            Text("わからなくて大丈夫です。自分の引き金を正確に知っている人は多くありません。記録が増えると、実際の記録からこのアプリが見つけます。")
                 .foregroundStyle(palette.muted).multilineTextAlignment(.center)
             VStack(spacing: 8) {
                 SensitivityToggles()
