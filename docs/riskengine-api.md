@@ -228,6 +228,7 @@ public func schedule(_ risks: [HourlyRisk], now: Date, quietHours: QuietHours?) 
 境界はすべて `>=`（閾値ちょうどで加点する）。
 
 出典: 6 時間前からの気圧低下が頭痛発生の最大の説明要因であり、気圧の絶対値より変化のほうが強く効くことは 4 万人規模の記録データで確認されている [1]。6h 窓を設けている根拠。
+符号を見ない根拠: 低気圧ではなく高気圧・気圧上昇に反応する個人が実在し、集団平均では効果が相殺されうる [2]。7 千人規模の発作記録でも 24 時間で 20 hPa 以上の**上昇**があった日に発作が増えている [3]。
 
 ### 3.2 絶対気圧（最大 3pt）
 
@@ -259,6 +260,8 @@ public func schedule(_ risks: [HourlyRisk], now: Date, quietHours: QuietHours?) 
 - `amount > 2 && score < 2` → +1
 
 降水量の判定は `>`（2mm ちょうどは加点しない）。既に 2pt なら加点しない。確率 60〜79%（1pt）と 3mm の組み合わせで 2pt になる経路が存在する。
+
+配点が小さい根拠: 降雨は湿度・気圧と相関するため独立の寄与が小さく、4 万人規模の記録では気象特徴のうち最下位 [1]、2.6 千人の慢性痛記録では有意差なし [4]。
 
 ### 3.5 気温変動（最大 2pt）
 
@@ -409,3 +412,6 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 ## 参考文献
 
 1. Katsuki M, et al. Investigating the effects of weather on headache occurrence using a smartphone application and artificial intelligence. Headache. 2023;63(5):585–600. doi:10.1111/head.14482
+2. Becker WJ. Weather and migraine: Can so many patients be wrong? Cephalalgia. 2011;31(4):387–390. doi:10.1177/0333102410385583
+3. Portt AE, Gasparrini A, Ge E, et al. Weather, air pollution, and migraine: A case-time series analysis examining environmental exposures and transient health outcomes recorded via smartphone application. Environ Epidemiol. 2026;10(3):e475. doi:10.1097/ee9.0000000000000475
+4. Dixon WG, Beukenhorst AL, Yimer BB, et al. How the weather affects the pain of citizen scientists using a smartphone app. npj Digit Med. 2019;2:105. doi:10.1038/s41746-019-0180-3
