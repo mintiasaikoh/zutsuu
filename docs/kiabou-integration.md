@@ -88,6 +88,13 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 無限ループでメインスレッドが止まる（ホームの ScrollView に埋め込んだ時点で顕在化、`sample` で確認）。
 画面が観測してよいのは `loadedResting` と `failed` だけで、他は `@ObservationIgnored`。新しい状態を足すときも同じ。
 
+**`AnimationPlaybackController.speed` を毎フレーム設定しないこと。** RealityKit の
+speed setter は内部で毎回 os_log を発行し、毎フレーム × コントローラ数だとログ処理だけで
+メインスレッドが飽和して UI ごと固まる（記録タブを開いてシーンが 2 つになった時点で顕在化。
+`sample` でスタックの約 8 割が logging だった）。`tick` は 0.3 秒ごとに間引いて設定する。
+同じ理由で `playAnimations` はアニメーションを持つ階層で再帰を止める — 子孫まで下りると
+同じアニメーションを骨の数だけ重複再生してコントローラが膨らむ。
+
 ## 5. プラットフォーム
 
 View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `#if os(iOS) || os(macOS)`。`HealthCheckIn` / `CheckInModel` / `PinkMotion` は全プラットフォームでコンパイルされる。

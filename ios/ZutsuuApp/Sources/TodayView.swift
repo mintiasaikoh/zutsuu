@@ -16,6 +16,10 @@ struct TodayView: View {
     private var palette: KiabouPalette { KiabouPalette(dim: colorScheme == .dark) }
     /// 背面遊泳モードが実際に効いているか。Reduce Motion 時はカード内表示へ戻す（§3.1）。
     private var swimsBehind: Bool { ambient && !reduceMotion }
+    /// 背面遊泳時のカード地の不透明度。時間別は情報密度が低い一覧なので、
+    /// きあぼうの泳ぐ場所として一段濃く透かす。
+    private var cardOpacity: Double { swimsBehind ? 0.7 : 1 }
+    private var hourlyOpacity: Double { swimsBehind ? 0.45 : 1 }
 
     var body: some View {
         NavigationStack {
@@ -23,18 +27,18 @@ struct TodayView: View {
                 VStack(spacing: 16) {
                     heroCard
                     nextAlertCard
-                    Card(palette: palette, translucent: swimsBehind) {
+                    Card(palette: palette, backgroundOpacity: cardOpacity) {
                         KiabouQuickCheckIn(recordedDays: pipeline.recordedDays,
                                            showsStage: !swimsBehind,
                                            onRecord: pipeline.record)
                     }
                     if let swing = pipeline.swing, swing.hasAlert {
-                        Card(palette: palette, title: "寒暖差", translucent: swimsBehind) {
+                        Card(palette: palette, title: "寒暖差", backgroundOpacity: cardOpacity) {
                             Text("昨日の最高気温より \(swing.difference > 0 ? "高く" : "低く")、差は \(Int(abs(swing.difference).rounded()))℃。")
                         }
                     }
                     if !pipeline.upcoming.isEmpty {
-                        Card(palette: palette, title: "時間別", translucent: swimsBehind) {
+                        Card(palette: palette, title: "時間別", backgroundOpacity: hourlyOpacity) {
                             VStack(spacing: 0) {
                                 ForEach(pipeline.upcoming.prefix(24)) { risk in
                                     HourRow(risk: risk, palette: palette)
@@ -69,7 +73,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private var heroCard: some View {
-        Card(palette: palette, translucent: swimsBehind) {
+        Card(palette: palette, backgroundOpacity: cardOpacity) {
             heroContent
         }
     }
@@ -103,7 +107,7 @@ struct TodayView: View {
     @ViewBuilder
     private var nextAlertCard: some View {
         if pipeline.current != nil {
-            Card(palette: palette, title: "次の通知", translucent: swimsBehind) {
+            Card(palette: palette, title: "次の通知", backgroundOpacity: cardOpacity) {
                 if let next = pipeline.nextAlert {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(next.title).font(.title3.weight(.semibold))
@@ -139,18 +143,18 @@ struct TodayView: View {
 }
 
 /// 3 色 + 紙白の規律に沿ったカード。タイトルは任意。
-/// `translucent` は背面遊泳モード用 — 後ろを泳ぐきあぼうが透けて見える。
+/// `backgroundOpacity` は背面遊泳モード用 — 下げるほど後ろを泳ぐきあぼうが透ける。
 private struct Card<Content: View>: View {
     let palette: KiabouPalette
     var title: String?
-    var translucent = false
+    var backgroundOpacity: Double = 1
     @ViewBuilder let content: Content
 
-    init(palette: KiabouPalette, title: String? = nil, translucent: Bool = false,
+    init(palette: KiabouPalette, title: String? = nil, backgroundOpacity: Double = 1,
          @ViewBuilder content: () -> Content) {
         self.palette = palette
         self.title = title
-        self.translucent = translucent
+        self.backgroundOpacity = backgroundOpacity
         self.content = content()
     }
 
@@ -163,7 +167,7 @@ private struct Card<Content: View>: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.card.opacity(translucent ? 0.7 : 1),
+        .background(palette.card.opacity(backgroundOpacity),
                     in: RoundedRectangle(cornerRadius: 20))
     }
 }

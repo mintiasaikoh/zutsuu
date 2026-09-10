@@ -24,6 +24,7 @@ final class KiabouScene {
     // 背面遊泳モード（kiabou-integration.md §3.1）の彷徨状態。
     @ObservationIgnored private var wander = SIMD2<Double>(0, 0)
     @ObservationIgnored private var heading = -0.5
+    @ObservationIgnored private var speedClock = 0.0
     private let ambient: Bool
     private(set) var loadedResting: Bool?
     private(set) var failed = false
@@ -89,9 +90,13 @@ final class KiabouScene {
 
     private func playAnimations(in entity: Entity) {
         // USDZではアニメーションがルート以外の骨格に付くこともある。
-        for animation in entity.availableAnimations {
-            let controller = entity.playAnimation(animation.repeat(), startsPaused: true)
-            animations.append(controller)
+        // 持っている階層で止めるのが重要 — 子孫まで下りると同じアニメーションを
+        // 重複再生し、コントローラ数が骨の数だけ膨らむ。
+        if !entity.availableAnimations.isEmpty {
+            for animation in entity.availableAnimations {
+                animations.append(entity.playAnimation(animation.repeat(), startsPaused: true))
+            }
+            return
         }
         for child in entity.children { playAnimations(in: child) }
     }
@@ -125,7 +130,14 @@ final class KiabouScene {
         drift.orientation = simd_quatf(angle: tilt * 0.157 * strength, axis: [0, 0, 1])
             * simd_quatf(angle: y * 0.070 * strength, axis: [1, 0, 0])
             * simd_quatf(angle: x * 0.087 * strength, axis: [0, 1, 0])
-        for animation in animations { animation.speed = 0.85 + 0.6 * x }
+        // speed の設定は毎フレーム行わない。RealityKit の speed setter は内部で
+        // 毎回 os_log を発行し、毎フレーム×コントローラ数だとログ処理だけで
+        // メインスレッドが飽和して UI ごと固まる（実測: サンプルの約 8 割が logging）。
+        speedClock += delta
+        if speedClock >= 0.3 {
+            speedClock = 0
+            for animation in animations { animation.speed = 0.85 + 0.6 * x }
+        }
     }
 
     /// 背面遊泳（kiabou-integration.md §3.1）。進行方位が 1/f でゆっくり変わり、
