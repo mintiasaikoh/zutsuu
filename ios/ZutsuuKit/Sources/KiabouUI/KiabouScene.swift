@@ -71,7 +71,7 @@ final class KiabouScene {
             drift.addChild(models[resting] ?? model)
             if ambient {
                 // 正面から少し引いた固定カメラ。モデルを小さくし、画面を横切る余地を作る。
-                drift.scale = [0.42, 0.42, 0.42]
+                drift.scale = [0.68, 0.68, 0.68]
                 camera.look(at: .zero, from: [0, 0, 0.95], relativeTo: nil)
             } else {
                 camera.look(at: .zero,
