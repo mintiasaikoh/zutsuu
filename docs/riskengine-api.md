@@ -227,6 +227,8 @@ public func schedule(_ risks: [HourlyRisk], now: Date, quietHours: QuietHours?) 
 
 境界はすべて `>=`（閾値ちょうどで加点する）。
 
+出典: 6 時間前からの気圧低下が頭痛発生の最大の説明要因であり、気圧の絶対値より変化のほうが強く効くことは 4 万人規模の記録データで確認されている [1]。6h 窓を設けている根拠。
+
 ### 3.2 絶対気圧（最大 3pt）
 
 固定閾値ではなく、その地点・その月の分布上の位置で評価する。
@@ -401,3 +403,9 @@ schedule = coalescingWakeUps( episodes(risks).compactMap { alert(for: $0) } )
 現在なし。
 
 2026-08-31 に `AlertKind` 導入・5a/5b 分割・起床時通知の集約（+285 行）の仕様適合レビューと品質レビュー（8 観点）を実施。挙動の仕様違反はゼロ。指摘は本文書の記述修正（§5.3 の掃引結果・規則番号の統一）、テストの件数表明の復元、§6.9 の追記として反映済み。`ScratchSweep.swift` は削除済み。
+
+---
+
+## 参考文献
+
+1. Katsuki M, et al. Investigating the effects of weather on headache occurrence using a smartphone application and artificial intelligence. Headache. 2023;63(5):585–600. doi:10.1111/head.14482
