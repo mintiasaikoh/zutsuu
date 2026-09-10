@@ -6,6 +6,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(ForecastPipeline.self) private var pipeline
+    @AppStorage("kiabou.ambient") private var ambient = false
     @AppStorage(SettingsKey.quietEnabled) private var quietEnabled = true
     @AppStorage(SettingsKey.quietStart) private var quietStart = 22.0
     @AppStorage(SettingsKey.quietEnd) private var quietEnd = 8.5
@@ -25,6 +26,13 @@ struct SettingsView: View {
                         Text(notificationsGranted == true ? "通知は許可されています" : "確認中…")
                             .foregroundStyle(.secondary)
                     }
+                }
+                Section {
+                    Toggle("画面のうしろを泳ぐ", isOn: $ambient)
+                } header: {
+                    Text("きあぼう")
+                } footer: {
+                    Text("ホーム画面の後ろを、きあぼうがゆっくり泳ぎます。")
                 }
                 Section {
                     Toggle("静穏時間", isOn: $quietEnabled)

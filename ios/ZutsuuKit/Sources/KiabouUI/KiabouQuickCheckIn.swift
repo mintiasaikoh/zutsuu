@@ -14,10 +14,14 @@ public struct KiabouQuickCheckIn: View {
     @AppStorage("kiabou.native.dim") private var dim = false
     @State private var model: CheckInModel
     private let recordedDays: Int?
+    private let showsStage: Bool
 
-    public init(recordedDays: Int? = nil,
+    /// `showsStage: false` は背面遊泳モード用。きあぼうが二匹に見えないよう
+    /// カード内のステージを隠し、ボタンと状態だけにする（kiabou-integration.md §3.1）。
+    public init(recordedDays: Int? = nil, showsStage: Bool = true,
                 onRecord: @escaping @MainActor (HealthCheckIn) async throws -> Void) {
         self.recordedDays = recordedDays
+        self.showsStage = showsStage
         _model = State(initialValue: CheckInModel(save: onRecord))
     }
 
@@ -25,11 +29,13 @@ public struct KiabouQuickCheckIn: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            KiabouStage(resting: model.isResting, cove: cove, dim: dim,
-                        moving: !reduceMotion && scenePhase == .active)
-                // ホームの above the fold に「今のリスク → 次の通知 → 記録ボタン」を収める高さ。
-                .frame(height: 150)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+            if showsStage {
+                KiabouStage(resting: model.isResting, cove: cove, dim: dim,
+                            moving: !reduceMotion && scenePhase == .active)
+                    // ホームの above the fold に「今のリスク → 次の通知 → 記録ボタン」を収める高さ。
+                    .frame(height: 150)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+            }
 
             if model.isResting {
                 Text("体調を記録しました。ゆっくり、休んでね。")

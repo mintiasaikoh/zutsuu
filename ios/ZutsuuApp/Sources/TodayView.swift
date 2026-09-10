@@ -10,8 +10,12 @@ import RiskEngine
 struct TodayView: View {
     @Environment(ForecastPipeline.self) private var pipeline
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("kiabou.ambient") private var ambient = false
 
     private var palette: KiabouPalette { KiabouPalette(dim: colorScheme == .dark) }
+    /// 背面遊泳モードが実際に効いているか。Reduce Motion 時はカード内表示へ戻す（§3.1）。
+    private var swimsBehind: Bool { ambient && !reduceMotion }
 
     var body: some View {
         NavigationStack {
@@ -19,16 +23,18 @@ struct TodayView: View {
                 VStack(spacing: 16) {
                     heroCard
                     nextAlertCard
-                    Card(palette: palette) {
-                        KiabouQuickCheckIn(recordedDays: pipeline.recordedDays, onRecord: pipeline.record)
+                    Card(palette: palette, translucent: swimsBehind) {
+                        KiabouQuickCheckIn(recordedDays: pipeline.recordedDays,
+                                           showsStage: !swimsBehind,
+                                           onRecord: pipeline.record)
                     }
                     if let swing = pipeline.swing, swing.hasAlert {
-                        Card(palette: palette, title: "寒暖差") {
+                        Card(palette: palette, title: "寒暖差", translucent: swimsBehind) {
                             Text("昨日の最高気温より \(swing.difference > 0 ? "高く" : "低く")、差は \(Int(abs(swing.difference).rounded()))℃。")
                         }
                     }
                     if !pipeline.upcoming.isEmpty {
-                        Card(palette: palette, title: "時間別") {
+                        Card(palette: palette, title: "時間別", translucent: swimsBehind) {
                             VStack(spacing: 0) {
                                 ForEach(pipeline.upcoming.prefix(24)) { risk in
                                     HourRow(risk: risk, palette: palette)
@@ -40,7 +46,17 @@ struct TodayView: View {
                 }
                 .padding(16)
             }
-            .background(palette.page.ignoresSafeArea())
+            .background {
+                if swimsBehind {
+                    ZStack {
+                        palette.page
+                        KiabouAmbientBackdrop()
+                    }
+                    .ignoresSafeArea()
+                } else {
+                    palette.page.ignoresSafeArea()
+                }
+            }
             .foregroundStyle(palette.ink)
             .tint(palette.primary)
             .navigationTitle("今日")
@@ -53,7 +69,14 @@ struct TodayView: View {
 
     @ViewBuilder
     private var heroCard: some View {
-        Card(palette: palette) {
+        Card(palette: palette, translucent: swimsBehind) {
+            heroContent
+        }
+    }
+
+    @ViewBuilder
+    private var heroContent: some View {
+        Group {
             if let current = pipeline.current {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("いま").font(.subheadline).foregroundStyle(palette.muted)
@@ -80,7 +103,7 @@ struct TodayView: View {
     @ViewBuilder
     private var nextAlertCard: some View {
         if pipeline.current != nil {
-            Card(palette: palette, title: "次の通知") {
+            Card(palette: palette, title: "次の通知", translucent: swimsBehind) {
                 if let next = pipeline.nextAlert {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(next.title).font(.title3.weight(.semibold))
@@ -116,14 +139,18 @@ struct TodayView: View {
 }
 
 /// 3 色 + 紙白の規律に沿ったカード。タイトルは任意。
+/// `translucent` は背面遊泳モード用 — 後ろを泳ぐきあぼうが透けて見える。
 private struct Card<Content: View>: View {
     let palette: KiabouPalette
     var title: String?
+    var translucent = false
     @ViewBuilder let content: Content
 
-    init(palette: KiabouPalette, title: String? = nil, @ViewBuilder content: () -> Content) {
+    init(palette: KiabouPalette, title: String? = nil, translucent: Bool = false,
+         @ViewBuilder content: () -> Content) {
         self.palette = palette
         self.title = title
+        self.translucent = translucent
         self.content = content()
     }
 
@@ -136,7 +163,8 @@ private struct Card<Content: View>: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
+        .background(palette.card.opacity(translucent ? 0.82 : 1),
+                    in: RoundedRectangle(cornerRadius: 20))
     }
 }
 

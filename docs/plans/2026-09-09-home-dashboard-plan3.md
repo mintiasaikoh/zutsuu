@@ -51,6 +51,9 @@
 ### Task 4: オンボーディング
 `OnboardingView`（`TabView(.page)`）。完了フラグは `AppStorage("onboarding.completed")`。`RootView` で出し分け。体質申告のトグルは `SensitivityToggles` として設定画面と共用。
 
+### Task 6: 背面遊泳モード（2026-09-10 追加、ユーザー提案）
+きあぼうを画面固定ではなく UI の後ろで泳がせるモード。仕様は `kiabou-integration.md` §3.1。
+
 ### Task 5（未着手）: 着せ替え
 `assets/kiabou/variations` の素材を Resources に取り込み、累計日数で解放、選択を保存、`KiabouScene` で差し替え。
 
