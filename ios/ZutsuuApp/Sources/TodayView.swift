@@ -163,7 +163,7 @@ private struct Card<Content: View>: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.card.opacity(translucent ? 0.82 : 1),
+        .background(palette.card.opacity(translucent ? 0.7 : 1),
                     in: RoundedRectangle(cornerRadius: 20))
     }
 }
