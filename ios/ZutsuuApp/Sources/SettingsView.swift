@@ -1,7 +1,7 @@
 // /Users/mymac/zutsuu/ios/ZutsuuApp/Sources/SettingsView.swift
 // 静穏時間・体質申告・通知権限の設定。
 // 申告は事前分布の傾けにだけ使い（設計書 §6.5）、変更は次回の予約更新で効く。
-// 関連: AppSettings.swift, SensitivityToggles.swift, ForecastPipeline.swift
+// 関連: AppSettings.swift, SensitivityToggles.swift, ForecastPipeline.swift, EvidenceView.swift
 import SwiftUI
 
 struct SettingsView: View {
@@ -51,6 +51,9 @@ struct SettingsView: View {
                     Text("心当たりのある条件")
                 } footer: {
                     Text("わからないままで大丈夫です。記録が少ないうちの通知の目安に使うだけで、記録が増えると実際の記録のほうが優先されます。")
+                }
+                Section("このアプリについて") {
+                    NavigationLink("スコアの根拠") { EvidenceView() }
                 }
             }
             .navigationTitle("設定")
