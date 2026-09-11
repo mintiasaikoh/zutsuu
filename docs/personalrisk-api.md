@@ -39,7 +39,7 @@ ios/ZutsuuKit/Tests/PersonalRiskTests/
 | `.insufficient(remainingDays:)` / `.ready(Summary)` | `Summary` は `activeCount` / `activeBad` / `calmCount` / `calmBad`、`activeRate` / `calmRate`（0〜1、件数 0 なら nil） |
 
 文面はアプリ層が作る。「気圧が動いていたときの記録 N 件のうち、つらいが X 件」の形に留め、「気圧に弱い」等の評価語は付けない。体質申告には言及しない（ユーザー決定）。
-広告による期限付き解放（設計書 §8）は Plan 4 の AdMob 実装と同時に入れる。それまでは常時表示。
+広告による期限付き解放（設計書 §8、7 日間）は 2026-09-12 に Plan 4 と同時に接続した（`AdsCoordinator.unlock(.correlationReport)`）。SDK 未初期化のあいだはボタンを無効にする。
 
 ### `PersonalRiskModel: Sendable, Equatable`
 

@@ -3,12 +3,14 @@
 // 起動 2 秒で「今どうか・次に何が来るか」が読め、その場で記録できるようにするため（設計原則 §1.3）。
 // 関連: ForecastPipeline.swift, ../../ZutsuuKit/Sources/KiabouUI/KiabouQuickCheckIn.swift, docs/plans/2026-09-09-home-dashboard-plan3.md
 import SwiftUI
+import ZutsuuAds
 import AppCore
 import KiabouUI
 import RiskEngine
 
 struct TodayView: View {
     @Environment(ForecastPipeline.self) private var pipeline
+    @Environment(AdsCoordinator.self) private var ads
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("kiabou.ambient") private var ambient = false
@@ -44,8 +46,10 @@ struct TodayView: View {
                     if !pipeline.upcoming.isEmpty {
                         Card(palette: palette, title: String(localized: "時間別"), backgroundOpacity: hourlyOpacity) {
                             VStack(spacing: 0) {
-                                ForEach(pipeline.upcoming.prefix(24)) { risk in
+                                // Tier 1: 6 行目の後に 1 枠。可視域に入ってからロードする（設計書 §8.2）。
+                                ForEach(Array(pipeline.upcoming.prefix(24).enumerated()), id: \.element.id) { index, risk in
                                     HourRow(risk: risk, palette: palette)
+                                    if index == 5 { NativeAdCard(isEnabled: ads.isReady) }
                                 }
                             }
                         }

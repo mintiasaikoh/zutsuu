@@ -4,12 +4,15 @@
 // 関連: ForecastPipeline.swift, BackgroundRefresh.swift, WatchSessionBridge.swift, docs/plans/2026-09-09-app-layer-plan2.md
 import SwiftUI
 import SwiftData
+import ZutsuuAds
 
 @main
 struct ZutsuuApp: App {
     private let container: ModelContainer
     private let pipeline: ForecastPipeline
     private let watchBridge: WatchSessionBridge
+    private let ads: AdsCoordinator
+    private let notificationObserver: NotificationResponseObserver
 
     init() {
         do {
@@ -22,6 +25,10 @@ struct ZutsuuApp: App {
         let pipeline = ForecastPipeline(store: CheckInStore(context: container.mainContext))
         self.pipeline = pipeline
         watchBridge = WatchSessionBridge(pipeline: pipeline)
+        // 広告 SDK はここでは起動しない。RootView がメイン画面の描画後に start する（設計書 §8.3）。
+        let ads = AdsCoordinator(provider: AdMobProvider())
+        self.ads = ads
+        notificationObserver = NotificationResponseObserver { ads.launchedFromNotification = true }
         BackgroundRefresh.register(pipeline)
     }
 
@@ -29,6 +36,7 @@ struct ZutsuuApp: App {
         WindowGroup {
             RootView()
                 .environment(pipeline)
+                .environment(ads)
         }
         .modelContainer(container)
     }

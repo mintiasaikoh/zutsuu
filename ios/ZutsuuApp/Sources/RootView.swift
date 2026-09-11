@@ -13,6 +13,8 @@ enum AppTab: String {
 
 struct RootView: View {
     @Environment(ForecastPipeline.self) private var pipeline
+    @Environment(AdsCoordinator.self) private var ads
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
     /// 起動引数 `-ui.selectedTab checkIn` でも指定できる（検証用）。
     @AppStorage("ui.selectedTab") private var selectedTab = AppTab.today.rawValue
@@ -31,6 +33,10 @@ struct RootView: View {
                     SettingsView()
                 }
             }
+            // 広告 SDK はメイン画面の描画後に非同期で起動（設計書 §8.3）。タブ切り替えを画面遷移として数える。
+            .task { ads.startAfterFirstFrame() }
+            .onChange(of: selectedTab) { _, _ in ads.noteTransition() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { ads.noteForeground() } }
         } else {
             OnboardingView {
                 onboardingCompleted = true

@@ -6,9 +6,11 @@ import SwiftUI
 import SwiftData
 import KiabouUI
 import PersonalRisk
+import AdPolicy
 
 struct KiabouTabView: View {
     @Environment(ForecastPipeline.self) private var pipeline
+    @Environment(AdsCoordinator.self) private var ads
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("kiabou.scene") private var sceneID = KiabouScenery.cove.id
@@ -184,7 +186,18 @@ struct KiabouTabView: View {
                 Text("あと\(remaining)日分の記録で、気圧との関係を見られます。")
                     .foregroundStyle(palette.muted)
             case .ready(let summary):
-                Text(Self.describe(summary))
+                // Tier 3: 広告視聴で 7 日間ひらく（設計書 §8.2 の表）。中核の記録機能は交換対象にしない。
+                if ads.isUnlocked(.correlationReport) {
+                    Text(Self.describe(summary))
+                } else {
+                    Text("記録は十分に溜まりました。短い広告を見ると、7 日間ひらきます。")
+                        .foregroundStyle(palette.muted)
+                    Button {
+                        Task { _ = await ads.unlock(.correlationReport) }
+                    } label: { Text("広告を見て 7 日間ひらく") }
+                    .disabled(!ads.isReady)
+                    .frame(minHeight: 44)
+                }
             }
         }
         .font(.subheadline)
