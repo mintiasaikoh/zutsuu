@@ -3,3 +3,4 @@ dist/
 .env
 .build/
 .swiftpm/
+assets/kiabou/backgrounds/kiabou-backgrounds-v1.zip

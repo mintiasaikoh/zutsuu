@@ -10,7 +10,7 @@ import SwiftUI
 public struct KiabouCheckInView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("kiabou.native.cove") private var cove = true
+    @AppStorage("kiabou.scene") private var sceneID = KiabouScenery.cove.id
     @AppStorage("kiabou.native.dim") private var dim = false
     @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
     @State private var model: CheckInModel
@@ -38,7 +38,7 @@ public struct KiabouCheckInView: View {
                 }
                 .multilineTextAlignment(.center)
 
-                KiabouStage(resting: model.isResting, cove: cove, dim: dim,
+                KiabouStage(resting: model.isResting, scenery: .scenery(id: sceneID), dim: dim,
                             moving: motionEnabled && scenePhase == .active,
                             outfit: .outfit(id: outfitID))
                     .frame(height: 300)
@@ -82,7 +82,6 @@ public struct KiabouCheckInView: View {
                 .frame(minHeight: 44)
 
                 VStack(spacing: 16) {
-                    Toggle("入り江の背景", isOn: $cove)
                     Toggle("薄明かり", isOn: $dim)
                 }
                 .toggleStyle(.switch)

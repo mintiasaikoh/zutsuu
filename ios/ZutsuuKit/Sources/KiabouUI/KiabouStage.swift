@@ -1,7 +1,7 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/KiabouUI/KiabouStage.swift
 // 静止した背景の前に、ネイティブ3Dのきあぼうを表示する。
 // 読み込み中も画像を保ち、非表示時にはゆらぎを停止するため。
-// 関連: KiabouScene.swift, KiabouPalette.swift, KiabouCheckInView.swift
+// 関連: KiabouScene.swift, KiabouScenery.swift, KiabouPalette.swift, KiabouCheckInView.swift
 #if os(iOS) || os(macOS)
 import RealityKit
 import SwiftUI
@@ -9,17 +9,17 @@ import SwiftUI
 /// きあぼうの舞台（背景 + 3D）。記録ビューときあぼうタブが共用する。
 public struct KiabouStage: View {
     let resting: Bool
-    let cove: Bool
+    let scenery: KiabouScenery
     let dim: Bool
     let moving: Bool
     var outfit: KiabouOutfit = .original
     @State private var scene = KiabouScene()
     @State private var visible = false
 
-    public init(resting: Bool, cove: Bool, dim: Bool, moving: Bool,
+    public init(resting: Bool, scenery: KiabouScenery = .cove, dim: Bool, moving: Bool,
                 outfit: KiabouOutfit = .original) {
         self.resting = resting
-        self.cove = cove
+        self.scenery = scenery
         self.dim = dim
         self.moving = moving
         self.outfit = outfit
@@ -30,9 +30,9 @@ public struct KiabouStage: View {
 
     public var body: some View {
         ZStack {
-            if cove, let coveImage = Self.bundledImage("cove") {
+            if let resource = scenery.resource, let backdrop = Self.bundledImage(resource) {
                 GeometryReader { geometry in
-                    coveImage
+                    backdrop
                         .resizable().scaledToFill()
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()

@@ -10,7 +10,7 @@ struct KiabouTabView: View {
     @Environment(ForecastPipeline.self) private var pipeline
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("kiabou.native.cove") private var cove = true
+    @AppStorage("kiabou.scene") private var sceneID = KiabouScenery.cove.id
     @AppStorage("kiabou.native.dim") private var dim = false
     @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
     @Query(sort: \CheckInRecord.date, order: .reverse) private var records: [CheckInRecord]
@@ -26,12 +26,13 @@ struct KiabouTabView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    KiabouStage(resting: false, cove: cove, dim: dim,
+                    KiabouStage(resting: false, scenery: .scenery(id: sceneID), dim: dim,
                                 moving: !reduceMotion && scenePhase == .active,
                                 outfit: .outfit(id: outfitID))
                         .frame(height: 260)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                     outfitSection
+                    scenerySection
                     appearanceSection
                     logSection
                 }
@@ -62,20 +63,46 @@ struct KiabouTabView: View {
         .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    @ViewBuilder
     private func outfitCell(_ outfit: KiabouOutfit) -> some View {
-        let unlocked = outfit.isUnlocked(recordedDays: recordedDays)
-        let selected = outfit.id == outfitID
+        unlockCell(name: outfit.name, requiredDays: outfit.requiredDays,
+                   selected: outfit.id == outfitID, selectedLabel: "いまの姿") { outfitID = outfit.id }
+    }
+
+    // MARK: - 背景
+
+    /// 解放は着せ替えと同じ累計記録日数（kiabou-integration.md §3.3）。無地と入り江は最初から。
+    private var scenerySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("はいけい").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+                ForEach(KiabouScenery.all) { scenery in
+                    unlockCell(name: scenery.name, requiredDays: scenery.requiredDays,
+                               selected: scenery.id == sceneID, selectedLabel: "いまの背景") {
+                        sceneID = scenery.id
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// 着せ替え・背景で共用する選択セル。ロック中は「あと N 日」の予告だけを出す。
+    @ViewBuilder
+    private func unlockCell(name: String, requiredDays: Int, selected: Bool,
+                            selectedLabel: String, select: @escaping () -> Void) -> some View {
+        let unlocked = recordedDays >= requiredDays
         Button {
-            if unlocked { outfitID = outfit.id }
+            if unlocked { select() }
         } label: {
             VStack(spacing: 4) {
-                Text(outfit.name).font(.subheadline.weight(selected ? .bold : .regular))
+                Text(name).font(.subheadline.weight(selected ? .bold : .regular))
                 if !unlocked {
-                    Text("あと\(outfit.requiredDays - recordedDays)日")
+                    Text("あと\(requiredDays - recordedDays)日")
                         .font(.caption.monospacedDigit()).foregroundStyle(palette.muted)
                 } else if selected {
-                    Text("いまの姿").font(.caption).foregroundStyle(palette.muted)
+                    Text(selectedLabel).font(.caption).foregroundStyle(palette.muted)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 52)
@@ -88,15 +115,14 @@ struct KiabouTabView: View {
         .buttonStyle(.plain)
         .disabled(!unlocked)
         .accessibilityLabel(unlocked
-            ? "\(outfit.name)\(selected ? "、選択中" : "")"
-            : "\(outfit.name)。あと\(outfit.requiredDays - recordedDays)日の記録で選べます")
+            ? "\(name)\(selected ? "、選択中" : "")"
+            : "\(name)。あと\(requiredDays - recordedDays)日の記録で選べます")
     }
 
     // MARK: - 見え方
 
     private var appearanceSection: some View {
         VStack(spacing: 12) {
-            Toggle("入り江の背景", isOn: $cove)
             Toggle("薄明かり", isOn: $dim)
         }
         .padding(16)

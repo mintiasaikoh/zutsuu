@@ -89,6 +89,19 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
   `CheckInRecord` に optional で保存し、「安心 · 1018 hPa · 3時間で1hPa上昇 · 23℃」の形で出す。
   生値のない古い記録は要因名だけ（「高い湿度 · 降水」）。文面は記述のみで評価語を付けない
 
+### 3.3 背景の選択（2026-09-11、ユーザー制作の素材 10 種）
+
+- `KiabouScenery` が背景と解放条件を定義する。無地（0 日）・入り江（0 日、従来の背景）・
+  ユーザー制作の 10 種（assets/kiabou/backgrounds、`catalog.json` の順に 5 種が累計 5 日、5 種が累計 10 日。
+  設計値でユーザー判断で変えてよい）。**`id` は AppStorage の保存キー（`kiabou.scene`）なので変更禁止**。
+  未知の id は入り江に倒す
+- 素材は PNG 1536×1024（各約 1.9MB）を JPEG 品質 80 に変換して `Resources/scene-{id}.jpg` として同梱
+  （10 枚で約 2MB。PNG のままだと 19MB 増えるため）。同梱漏れはテスト（`KiabouSceneryTests`）で防ぐ
+- 薄明かり（`kiabou.native.dim`）は背景に関わらず同じ処理（彩度 0.7・黒 57% 重ね）。快適さの設定は
+  解放条件から独立（設計書 §6.7）
+- 従来の `kiabou.native.cove`（入り江オン/オフ）は `kiabou.scene` に置き換えた。未リリースのため移行処理なし
+- 縦長トリミングで左右の小物が切れる素材があるが、ステージは横長カードなので許容（素材 README の注意）
+
 ### 3.1 背面遊泳モード（2026-09-10、ユーザー提案）
 
 きあぼうをカードの中に固定せず、**UI の後ろを縦横斜めにゆっくり泳がせる**モード。
@@ -103,7 +116,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 - 「体調の入力に戻る」は表示切り替えであり、**「良い」を保存しない**（画面を戻る操作を回復記録にしない）
 - 休む表示（毛布にくるまる）は「きあぼうと寝る」ボタンで本人が選ぶ。記録は表示を変えない（2026-09-11）
 - ゆらぎは 0.025〜0.4 Hz の 1/f。Reduce Motion で自動停止、手動の停止ボタンもある。中断復帰時に位置を飛ばさない（delta を 0.1 秒で切り詰め）
-- 見え方（入り江背景・薄明かり）は `AppStorage` キー `kiabou.native.cove` / `kiabou.native.dim`。端末の画面輝度は変更しない
+- 見え方（背景・薄明かり）は `AppStorage` キー `kiabou.scene` / `kiabou.native.dim`。端末の画面輝度は変更しない
 - 症状の軽減効果を主張する文言は置かない（設計書 §6.3 の記述主義に従う）
 
 ## 4. 素材
@@ -114,6 +127,8 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 
 - `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`
 - `assets/kiabou/personas/` — 衣装ペルソナ 5 種。2026-09-11 に採用し `costume` / `covered` を同梱
+- `assets/kiabou/backgrounds/` — ユーザー制作の背景 10 種（PNG 原画・プロンプト・catalog.json）。
+  2026-09-11 に採用し JPEG 変換して同梱。`kiabou-backgrounds-v1.zip` は展開済み内容と重複するため git 管理外
 - `kiabou-wardrobe-v1.zip` は展開済み内容と重複するため git 管理外
 
 ## 4.5 実装上の罠（2026-09-10）

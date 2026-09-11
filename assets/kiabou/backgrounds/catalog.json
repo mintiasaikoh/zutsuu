@@ -1,0 +1,115 @@
+{
+  "_file": "/Users/mymac/zutsuu/assets/kiabou/backgrounds/catalog.json",
+  "_role": "きあぼう用の背景素材一覧と画像メタデータ",
+  "_reason": "アプリ実装から静止背景を選択して読み込むため",
+  "_related": [
+    "index.html",
+    "README.md",
+    "prompts.md"
+  ],
+  "version": 2,
+  "generatedOn": "2026-09-11",
+  "format": "png",
+  "animated": false,
+  "backgrounds": [
+    {
+      "id": "rainy-cafe",
+      "name": "雨の日の喫茶店",
+      "file": "rainy-cafe.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1785337,
+      "sha256": "ed88d1abac58168b06a27cf7baaeb513a3e3b6842707d134d12982ecbd1f3272"
+    },
+    {
+      "id": "sunset-rooftop",
+      "name": "夕暮れの屋上",
+      "file": "sunset-rooftop.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1941507,
+      "sha256": "14f541a0b4452ba7b7fd532ede5343f70e3afb9017139a32a9e90903b921340e"
+    },
+    {
+      "id": "moonlit-cove",
+      "name": "月夜の入り江",
+      "file": "moonlit-cove.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1913864,
+      "sha256": "465ad36a17897a738f409df58a39a8cc15562e5b69ec70b5c8fc9575f9ed1e46"
+    },
+    {
+      "id": "cloud-bed",
+      "name": "雲の上の寝床",
+      "file": "cloud-bed.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1721162,
+      "sha256": "bdc68963cddcc36249c8783dfceb6dfb0cd2cdc9c1ce2f524125dcd14e88c2d2"
+    },
+    {
+      "id": "mage-study",
+      "name": "魔法使いの書斎",
+      "file": "mage-study.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1976425,
+      "sha256": "ab68f06781a8fda7f4016acf776b0d5e93638a2eee59cce18cdff22ab0748c73"
+    },
+    {
+      "id": "forest-veranda",
+      "name": "森の縁側",
+      "file": "forest-veranda.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1861431,
+      "sha256": "a09cf22ffc2e65a70244464aa21b66232d47c8db0d77162af5802533100f387e"
+    },
+    {
+      "id": "snow-window",
+      "name": "雪の日の窓辺",
+      "file": "snow-window.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 2137138,
+      "sha256": "367c0aee8b4879e05ac30edf5a38f21308aa3af6cd7472bc0fcdd4fab429fea7"
+    },
+    {
+      "id": "underwater-garden",
+      "name": "浅瀬の水庭",
+      "file": "underwater-garden.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1859727,
+      "sha256": "944aa1a457fa4fa764051e26ee09d109a293f22f3dac8fa39bf4f4d43e6f76a5"
+    },
+    {
+      "id": "quiet-library",
+      "name": "小さな図書室",
+      "file": "quiet-library.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1968081,
+      "sha256": "dcc3e23de5ae6a246f51f9283c52503b8109fd2c9c406be4748085559bf11af3"
+    },
+    {
+      "id": "moon-train",
+      "name": "おやすみ列車",
+      "file": "moon-train.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1954247,
+      "sha256": "24bb6e98461aadd691a9991dcf0e653d8bd52bc9a840a88e769989a0b5d20fa2"
+    },
+    {
+      "id": "quiet-sea",
+      "name": "きあぼうの海",
+      "file": "quiet-sea.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 2050226,
+      "sha256": "28b5a12764c783588fabf8495ec7bbe88353e543df22bc02faf7e2ac2ccc2129"
+    }
+  ]
+}

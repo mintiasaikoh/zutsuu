@@ -1,0 +1,48 @@
+<!-- /Users/mymac/zutsuu/assets/kiabou/backgrounds/index.html -->
+<!-- 背景11種類を一覧表示する。 -->
+<!-- 個別画像と暗めの見え方を確認するため。 -->
+<!-- 関連: README.md, catalog.json, prompts.md -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>きあぼうの居場所 — 11の背景</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f2ee;color:#283e4d;font:15px/1.7 system-ui,sans-serif}
+main{max-width:1240px;margin:auto;padding:40px 24px}h1{font-size:clamp(26px,4vw,40px);font-weight:550;margin:4px 0 8px}
+.eyebrow{font-size:12px;letter-spacing:.15em}p{color:#53636b;margin:8px 0 20px}
+input{accent-color:#254c69;width:20px;height:20px;vertical-align:middle}label{display:inline-block;padding:12px 8px;cursor:pointer}
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 22px;margin-top:22px}
+figure{margin:0;min-width:0}a{color:#254c69}figure a{display:block;border-radius:18px;overflow:hidden;background:#d7dedc}
+img{width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;display:block}
+figcaption{display:flex;align-items:baseline;gap:12px;padding:10px 2px}
+.number{font:12px ui-monospace,monospace;color:#61717b}h2{font-size:18px;font-weight:550;margin:0}
+#dim:checked~.gallery img{filter:brightness(.58) saturate(.8)}
+body:has(#dim:checked){background:#26343d;color:#e0e7e9}
+body:has(#dim:checked) p,body:has(#dim:checked) .number,body:has(#dim:checked) a{color:#c2ced5}
+a:focus-visible,input:focus-visible{outline:3px solid #416d88;outline-offset:5px}
+footer{margin-top:36px;font-size:13px}
+@media(max-width:680px){main{padding:24px 16px}.gallery{grid-template-columns:1fr;gap:20px}}
+</style>
+</head>
+<body><main>
+<span class="eyebrow">KIABOU / PLACES TO REST</span>
+<h1>今日は、どこにいよう。</h1>
+<p>きあぼうのための、11の静かな景色。画像を押すと原寸で開けます。</p>
+<input type="checkbox" id="dim"><label for="dim">暗めで見比べる</label>
+<section class="gallery" aria-label="背景一覧">
+<figure><a href="rainy-cafe.png" aria-label="雨の日の喫茶店を原寸で開く"><img src="rainy-cafe.png" alt="雨の日の喫茶店" width="1536" height="1024" loading="eager"></a><figcaption><span class="number">01</span><h2>雨の日の喫茶店</h2></figcaption></figure>
+<figure><a href="sunset-rooftop.png" aria-label="夕暮れの屋上を原寸で開く"><img src="sunset-rooftop.png" alt="夕暮れの屋上" width="1536" height="1024" loading="eager"></a><figcaption><span class="number">02</span><h2>夕暮れの屋上</h2></figcaption></figure>
+<figure><a href="moonlit-cove.png" aria-label="月夜の入り江を原寸で開く"><img src="moonlit-cove.png" alt="月夜の入り江" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">03</span><h2>月夜の入り江</h2></figcaption></figure>
+<figure><a href="cloud-bed.png" aria-label="雲の上の寝床を原寸で開く"><img src="cloud-bed.png" alt="雲の上の寝床" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">04</span><h2>雲の上の寝床</h2></figcaption></figure>
+<figure><a href="mage-study.png" aria-label="魔法使いの書斎を原寸で開く"><img src="mage-study.png" alt="魔法使いの書斎" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">05</span><h2>魔法使いの書斎</h2></figcaption></figure>
+<figure><a href="forest-veranda.png" aria-label="森の縁側を原寸で開く"><img src="forest-veranda.png" alt="森の縁側" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">06</span><h2>森の縁側</h2></figcaption></figure>
+<figure><a href="snow-window.png" aria-label="雪の日の窓辺を原寸で開く"><img src="snow-window.png" alt="雪の日の窓辺" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">07</span><h2>雪の日の窓辺</h2></figcaption></figure>
+<figure><a href="underwater-garden.png" aria-label="浅瀬の水庭を原寸で開く"><img src="underwater-garden.png" alt="浅瀬の水庭" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">08</span><h2>浅瀬の水庭</h2></figcaption></figure>
+<figure><a href="quiet-library.png" aria-label="小さな図書室を原寸で開く"><img src="quiet-library.png" alt="小さな図書室" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">09</span><h2>小さな図書室</h2></figcaption></figure>
+<figure><a href="moon-train.png" aria-label="おやすみ列車を原寸で開く"><img src="moon-train.png" alt="おやすみ列車" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">10</span><h2>おやすみ列車</h2></figcaption></figure>
+<figure><a href="quiet-sea.png" aria-label="きあぼうの海を原寸で開く"><img src="quiet-sea.png" alt="きあぼうの海" width="1536" height="1024" loading="lazy"></a><figcaption><span class="number">11</span><h2>きあぼうの海</h2></figcaption></figure>
+</section>
+<footer><a href="README.md">素材の仕様</a> · <a href="kiabou-backgrounds-v2.zip" download>11種類をまとめて保存</a> · <a href="../personas/index.html">きあぼうの衣装</a></footer>
+</main></body></html>
+
