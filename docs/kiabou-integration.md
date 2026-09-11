@@ -167,7 +167,7 @@ View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `
 
 ## 6. 未確定
 
-- **watchOS の 1 タップ記録**（設計書 v1.0 スコープ）は未実装。値型は共有できるが View は別途必要
+- **watchOS の 1 タップ記録**（設計書 v1.0 スコープ）は未実装。計画は `docs/plans/2026-09-12-watchos-plan5.md`（記録の転送方式などユーザーの決定待ち）
 - **保存後の任意チップ（§6.6）のアプリ実装**は未着手（v1.1）
 - personas の `plain`（色だけ）版の採否は未定
 
