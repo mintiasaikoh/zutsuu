@@ -120,3 +120,17 @@ NCEP/NCAR Reanalysis 1 の日平均海面気圧 1991〜2020 年から作った�
 
 - 文面のローカライズ方式（String Catalog を AppCore に置くか、アプリ側で組み立て直すか）
 - `TemperatureSwing` の表示（通知には含めない。画面側の扱いは Plan 3）
+
+## 5. ローカライズ（2026-09-12）
+
+- 方式は **String Catalog**（`Localizable.xcstrings`）。ソース言語は日本語で、**キーは日本語の文面そのもの**。翻訳は en / de / ko / zh-Hans
+- 置き場所: アプリ本体 `ios/ZutsuuApp/Resources/`（`InfoPlist.xcstrings` も）、Watch `ios/ZutsuuWatch/Resources/`、
+  ウィジェット `ios/ZutsuuWatchWidget/Resources/`、パッケージは `KiabouUI/Resources/` と `AppCore/Resources/`
+  （`Package.swift` の `defaultLocalization: "ja"`）
+- **パッケージ内の文字列は必ず `bundle: .module` を付ける**（`Text("…", bundle: .module)` / `String(localized:bundle:)`）。
+  付け忘れると main bundle を探して日本語のまま出る。アプリ本体は `String(localized:)` / `Text("…")` でよい
+- 通知文面の語順が言語で変わるため、AppCore の翻訳は位置指定（`%1$@`）を使う
+- **文字列を足したら再抽出する**: `SWIFT_EMIT_LOC_STRINGS=YES` でビルドし、
+  `xcrun xcstringstool sync <catalog> --stringsdata <stringsdata…>` で各カタログへ流し込む（手順は `tools/localization/README.md`）。
+  `swift test` は macOS で走るためカタログを引かず、日本語キーのまま比較している（テストの期待値は日本語）
+- 表示名は `RiskLevel.displayName`（AppCore）と `HealthFeeling.label`（KiabouUI）に集約。個別の View で文字列を持たない

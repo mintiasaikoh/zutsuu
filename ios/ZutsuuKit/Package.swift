@@ -8,6 +8,7 @@ import PackageDescription
 
 let package = Package(
     name: "ZutsuuKit",
+    defaultLocalization: "ja",
     platforms: [.iOS(.v18), .watchOS(.v11), .macOS(.v15)],
     products: [
         .library(name: "RiskEngine", targets: ["RiskEngine"]),

@@ -20,22 +20,22 @@ struct OnboardingView: View {
                 Spacer()
                 Button("スキップ", action: onFinish)
                     .frame(minHeight: 44)
-                    .accessibilityHint("あとから設定で変更できます")
+                    .accessibilityHint(String(localized: "あとから設定で変更できます"))
             }
             .padding(.horizontal, 24)
 
             TabView(selection: $page) {
                 OnboardingPage(
                     symbol: "cloud.sun",
-                    title: "気圧の変化を、先に知らせます",
-                    message: "気圧・湿度・気温・雨から、これから 72 時間で調子が崩れやすい時間を見つけます。大きな変化の 90 分前にお知らせします。",
-                    action: "つぎへ", palette: palette) { page = 1 }
+                    title: String(localized: "気圧の変化を、先に知らせます"),
+                    message: String(localized: "気圧・湿度・気温・雨から、これから 72 時間で調子が崩れやすい時間を見つけます。大きな変化の 90 分前にお知らせします。"),
+                    action: String(localized: "つぎへ"), palette: palette) { page = 1 }
                     .tag(0)
                 OnboardingPage(
                     symbol: "location",
-                    title: "現在地の予報を使います",
-                    message: "位置情報は端末の外へ送られません。Apple Weather への座標送信だけに使います。",
-                    action: "位置情報を許可する", palette: palette) {
+                    title: String(localized: "現在地の予報を使います"),
+                    message: String(localized: "位置情報は端末の外へ送られません。Apple Weather への座標送信だけに使います。"),
+                    action: String(localized: "位置情報を許可する"), palette: palette) {
                         Task {
                             _ = try? await location.current()
                             page = 2
@@ -44,9 +44,9 @@ struct OnboardingView: View {
                     .tag(1)
                 OnboardingPage(
                     symbol: "bell.badge",
-                    title: "変化の前に、通知でお知らせ",
-                    message: "鳴らさない時間帯は設定で変えられます。就寝中の変化は起きた時刻に届きます。",
-                    action: "通知を許可する", palette: palette) {
+                    title: String(localized: "変化の前に、通知でお知らせ"),
+                    message: String(localized: "鳴らさない時間帯は設定で変えられます。就寝中の変化は起きた時刻に届きます。"),
+                    action: String(localized: "通知を許可する"), palette: palette) {
                         Task {
                             _ = await notifications.requestAuthorization()
                             page = 3

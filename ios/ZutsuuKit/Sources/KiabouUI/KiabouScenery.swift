@@ -14,9 +14,9 @@ public struct KiabouScenery: Identifiable, Sendable, Equatable, Hashable {
     let resource: String?
 
     /// 無地。快適さの設定なので解放条件は付けない（設計書 §6.7）。
-    public static let plain = KiabouScenery(id: "plain", name: "むじ", requiredDays: 0, resource: nil)
+    public static let plain = KiabouScenery(id: "plain", name: String(localized: "むじ", bundle: .module), requiredDays: 0, resource: nil)
     /// 従来の入り江。最初から選べる。
-    public static let cove = KiabouScenery(id: "cove", name: "いりえ", requiredDays: 0, resource: "cove.png")
+    public static let cove = KiabouScenery(id: "cove", name: String(localized: "いりえ", bundle: .module), requiredDays: 0, resource: "cove.png")
 
     /// 表示順 = 解放順。ユーザー制作の 11 種は catalog.json の順に 5 日 / 10 日で解放。
     public static let all: [KiabouScenery] =
@@ -25,12 +25,17 @@ public struct KiabouScenery: Identifiable, Sendable, Equatable, Hashable {
         + user.dropFirst(5).map { user($0, requiredDays: 10) }
 
     private static let user: [(id: String, name: String)] = [
-        ("rainy-cafe", "雨の日の喫茶店"), ("sunset-rooftop", "夕暮れの屋上"),
-        ("moonlit-cove", "月夜の入り江"), ("cloud-bed", "雲の上の寝床"),
-        ("mage-study", "魔法使いの書斎"), ("forest-veranda", "森の縁側"),
-        ("snow-window", "雪の日の窓辺"), ("underwater-garden", "浅瀬の水庭"),
-        ("quiet-library", "小さな図書室"), ("moon-train", "おやすみ列車"),
-        ("quiet-sea", "きあぼうの海"),
+        ("rainy-cafe", String(localized: "雨の日の喫茶店", bundle: .module)),
+        ("sunset-rooftop", String(localized: "夕暮れの屋上", bundle: .module)),
+        ("moonlit-cove", String(localized: "月夜の入り江", bundle: .module)),
+        ("cloud-bed", String(localized: "雲の上の寝床", bundle: .module)),
+        ("mage-study", String(localized: "魔法使いの書斎", bundle: .module)),
+        ("forest-veranda", String(localized: "森の縁側", bundle: .module)),
+        ("snow-window", String(localized: "雪の日の窓辺", bundle: .module)),
+        ("underwater-garden", String(localized: "浅瀬の水庭", bundle: .module)),
+        ("quiet-library", String(localized: "小さな図書室", bundle: .module)),
+        ("moon-train", String(localized: "おやすみ列車", bundle: .module)),
+        ("quiet-sea", String(localized: "きあぼうの海", bundle: .module)),
     ]
 
     private static func user(_ entry: (id: String, name: String), requiredDays: Int) -> KiabouScenery {

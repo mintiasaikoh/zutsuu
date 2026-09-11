@@ -33,12 +33,16 @@ struct TodayView: View {
                                            onRecord: pipeline.record)
                     }
                     if let swing = pipeline.swing, swing.hasAlert {
-                        Card(palette: palette, title: "寒暖差", backgroundOpacity: cardOpacity) {
-                            Text("昨日の最高気温より \(swing.difference > 0 ? "高く" : "低く")、差は \(Int(abs(swing.difference).rounded()))℃。")
+                        Card(palette: palette, title: String(localized: "寒暖差"), backgroundOpacity: cardOpacity) {
+                            if swing.difference > 0 {
+                                Text("昨日の最高気温より高く、差は \(Int(abs(swing.difference).rounded()))℃。")
+                            } else {
+                                Text("昨日の最高気温より低く、差は \(Int(abs(swing.difference).rounded()))℃。")
+                            }
                         }
                     }
                     if !pipeline.upcoming.isEmpty {
-                        Card(palette: palette, title: "時間別", backgroundOpacity: hourlyOpacity) {
+                        Card(palette: palette, title: String(localized: "時間別"), backgroundOpacity: hourlyOpacity) {
                             VStack(spacing: 0) {
                                 ForEach(pipeline.upcoming.prefix(24)) { risk in
                                     HourRow(risk: risk, palette: palette)
@@ -107,7 +111,7 @@ struct TodayView: View {
     @ViewBuilder
     private var nextAlertCard: some View {
         if pipeline.current != nil {
-            Card(palette: palette, title: "次の通知", backgroundOpacity: cardOpacity) {
+            Card(palette: palette, title: String(localized: "次の通知"), backgroundOpacity: cardOpacity) {
                 if let next = pipeline.nextAlert {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(next.title).font(.title3.weight(.semibold))
@@ -199,13 +203,16 @@ enum FactorText {
         var parts: [String] = []
         let change = risk.pressureChanges.threeHour
         if factors.pressureChange > 0, abs(change).rounded() >= 1 {
-            parts.append("3時間で\(Int(abs(change).rounded()))hPa\(change < 0 ? "低下" : "上昇")")
+            let amount = Int(abs(change).rounded())
+            parts.append(change < 0 ? String(localized: "3時間で\(amount)hPa低下")
+                                    : String(localized: "3時間で\(amount)hPa上昇"))
         }
-        if factors.humidity > 0 { parts.append("湿度\(Int(risk.point.humidity.rounded()))%") }
+        if factors.humidity > 0 { parts.append(String(localized: "湿度\(Int(risk.point.humidity.rounded()))%")) }
         if factors.precipitation > 0 {
-            parts.append("降水確率\(Int(risk.point.precipitationChance.rounded()))%")
+            parts.append(String(localized: "降水確率\(Int(risk.point.precipitationChance.rounded()))%"))
         }
-        if factors.temperature > 0 { parts.append("気温の急な変化") }
-        return parts.isEmpty ? "大きな変化はありません。" : parts.joined(separator: "、")
+        if factors.temperature > 0 { parts.append(String(localized: "気温の急な変化")) }
+        return parts.isEmpty ? String(localized: "大きな変化はありません。")
+                             : parts.joined(separator: String(localized: "、"))
     }
 }

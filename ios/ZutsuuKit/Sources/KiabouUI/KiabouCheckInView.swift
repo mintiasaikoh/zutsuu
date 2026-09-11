@@ -30,12 +30,12 @@ public struct KiabouCheckInView: View {
         ScrollView {
             VStack(spacing: 20) {
                 VStack(spacing: 12) {
-                    Text("きあぼう").font(.subheadline.weight(.medium)).foregroundStyle(palette.muted)
-                    Text(model.isResting ? "ゆっくり、休んでね。" : "いまの調子は？")
+                    Text("きあぼう", bundle: .module).font(.subheadline.weight(.medium)).foregroundStyle(palette.muted)
+                    Text(model.isResting ? "ゆっくり、休んでね。" : "いまの調子は？", bundle: .module)
                         .font(.title2.weight(.semibold))
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityFocused($headingFocused)
-                    Text(model.isResting ? "きあぼうも、ここで休んでいます。" : "ひとつ押すだけで、記録できます。")
+                    Text(model.isResting ? "きあぼうも、ここで休んでいます。" : "ひとつ押すだけで、記録できます。", bundle: .module)
                         .font(.body).foregroundStyle(palette.muted)
                 }
                 .multilineTextAlignment(.center)
@@ -48,12 +48,12 @@ public struct KiabouCheckInView: View {
                     .padding(.horizontal, -24)
 
                 if model.isResting {
-                    Text("このまま、画面を閉じて大丈夫。")
+                    Text("このまま、画面を閉じて大丈夫。", bundle: .module)
                         .multilineTextAlignment(.center).foregroundStyle(palette.muted)
-                    Button("もどる") {
+                    Button {
                         model.returnToCheckIn()
                         headingFocused = true
-                    }
+                    } label: { Text("もどる", bundle: .module) }
                     .frame(minHeight: 44)
                 } else {
                     HStack(spacing: 10) {
@@ -63,34 +63,34 @@ public struct KiabouCheckInView: View {
                         }
                     }
                     if model.isSaving {
-                        Text("記録しています…").foregroundStyle(palette.muted)
+                        Text("記録しています…", bundle: .module).foregroundStyle(palette.muted)
                     } else if model.lastRecord != nil && model.errorMessage == nil {
-                        Text("記録したよ。")
+                        Text("記録したよ。", bundle: .module)
                             .foregroundStyle(palette.muted).accessibilityAddTraits(.updatesFrequently)
                     }
-                    Button("きあぼうと寝る") {
+                    Button {
                         model.rest()
                         headingFocused = true
-                    }
+                    } label: { Text("きあぼうと寝る", bundle: .module) }
                     .frame(minHeight: 44)
-                    .accessibilityHint("きあぼうが毛布にくるまって休みます。記録はしません")
+                    .accessibilityHint(String(localized: "きあぼうが毛布にくるまって休みます。記録はしません", bundle: .module))
                 }
                 if let error = model.errorMessage {
                     Text(error).foregroundStyle(palette.ink).multilineTextAlignment(.center)
                 }
 
-                Button(motionEnabled ? "ゆらぎを止める" : "ゆらぎを動かす") {
+                Button {
                     motionOverride = !motionEnabled
-                }
+                } label: { Text(motionEnabled ? "ゆらぎを止める" : "ゆらぎを動かす", bundle: .module) }
                 .frame(minHeight: 44)
 
                 VStack(spacing: 16) {
-                    Toggle("薄明かり", isOn: $dim)
+                    Toggle(isOn: $dim) { Text("薄明かり", bundle: .module) }
                 }
                 .toggleStyle(.switch)
                 .padding(.top, 8)
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel("見え方")
+                .accessibilityLabel(String(localized: "見え方", bundle: .module))
             }
             .padding(24)
             .frame(maxWidth: 520)

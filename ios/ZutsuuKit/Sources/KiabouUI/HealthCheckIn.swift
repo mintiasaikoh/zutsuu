@@ -11,14 +11,14 @@ public enum HealthFeeling: String, Codable, Sendable, CaseIterable {
     case normal
     case bad
 
-    /// 表示名（日本語、ローカライズ前の暫定）。
+    /// 表示名（String Catalog でローカライズ。キーは日本語）。
     /// 「良い/悪い」は評価の語で硬いため、本人の感じ方に寄せた柔らかい言葉にする
     /// （2026-09-10、ユーザー要望）。きあぼうの世界に合わせてひらがな。
     public var label: String {
         switch self {
-        case .good: "げんき"
-        case .normal: "ふつう"
-        case .bad: "つらい"
+        case .good: String(localized: "げんき", bundle: .module)
+        case .normal: String(localized: "ふつう", bundle: .module)
+        case .bad: String(localized: "つらい", bundle: .module)
         }
     }
 }

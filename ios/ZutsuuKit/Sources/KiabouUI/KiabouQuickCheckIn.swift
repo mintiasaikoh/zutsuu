@@ -43,12 +43,12 @@ public struct KiabouQuickCheckIn: View {
             }
 
             if model.isResting {
-                Text("ゆっくり、休んでね。")
+                Text("ゆっくり、休んでね。", bundle: .module)
                     .foregroundStyle(palette.muted)
-                Button("もどる") { model.returnToCheckIn() }
+                Button { model.returnToCheckIn() } label: { Text("もどる", bundle: .module) }
                     .frame(minHeight: 44)
             } else {
-                Text("いまの調子は？").font(.headline)
+                Text("いまの調子は？", bundle: .module).font(.headline)
                 HStack(spacing: 10) {
                     ForEach(HealthFeeling.allCases, id: \.self) { feeling in
                         RecordButton(title: feeling.label, feeling: feeling, palette: palette,
@@ -56,20 +56,20 @@ public struct KiabouQuickCheckIn: View {
                     }
                 }
                 if model.isSaving {
-                    Text("記録しています…").foregroundStyle(palette.muted)
+                    Text("記録しています…", bundle: .module).foregroundStyle(palette.muted)
                 } else if model.lastRecord != nil && model.errorMessage == nil {
-                    Text("記録したよ。").foregroundStyle(palette.muted)
+                    Text("記録したよ。", bundle: .module).foregroundStyle(palette.muted)
                 }
                 // 休むかは本人が選ぶ。記録とは独立の表示操作（kiabou-integration.md §2）。
-                Button("きあぼうと寝る") { model.rest() }
+                Button { model.rest() } label: { Text("きあぼうと寝る", bundle: .module) }
                     .frame(minHeight: 44)
-                    .accessibilityHint("きあぼうが毛布にくるまって休みます。記録はしません")
+                    .accessibilityHint(String(localized: "きあぼうが毛布にくるまって休みます。記録はしません", bundle: .module))
             }
             if let error = model.errorMessage {
                 Text(error).foregroundStyle(palette.ink).multilineTextAlignment(.center)
             }
             if let recordedDays, recordedDays > 0 {
-                Text("記録 \(recordedDays) 日目")
+                Text("記録 \(recordedDays) 日目", bundle: .module)
                     .font(.footnote.monospacedDigit()).foregroundStyle(palette.muted)
             }
         }

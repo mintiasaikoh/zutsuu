@@ -22,7 +22,7 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
 
     /// 原型。最初から選べる。
     public static let original = KiabouOutfit(
-        id: "original", name: "いつもの", requiredDays: 0,
+        id: "original", name: String(localized: "いつもの", bundle: .module), requiredDays: 0,
         swimResource: "kiabou.usdz", coveredResource: "covered.usdz", family: nil)
 
     /// 表示順 = 解放順。色だけ（3 日）→ 模様あり（7 日）→ 衣装ペルソナ（14 日）。
@@ -30,17 +30,22 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
         [original]
         + families.map { family in variation(family, style: "plain", requiredDays: 3) }
         + families.map { family in variation(family, style: "pattern", requiredDays: 7,
-                                             suffix: "・模様") }
+                                             suffix: String(localized: "・模様", bundle: .module)) }
         + personas.map { persona in variation(persona, style: "costume", requiredDays: 14,
                                               family: false) }
 
     private static let families: [(id: String, name: String)] =
-        [("kasumi", "かすみ"), ("shizuku", "しずく"), ("komorebi", "こもれび")]
+        [("kasumi", String(localized: "かすみ", bundle: .module)),
+         ("shizuku", String(localized: "しずく", bundle: .module)),
+         ("komorebi", String(localized: "こもれび", bundle: .module))]
 
     /// 衣装ペルソナ（assets/kiabou/personas、2026-09-11 採用）。
     private static let personas: [(id: String, name: String)] =
-        [("gyaru", "ぎゃる"), ("punk", "ぱんく"), ("cafe", "かふぇ"),
-         ("mage", "まほうつかい"), ("rapper", "らっぱー")]
+        [("gyaru", String(localized: "ぎゃる", bundle: .module)),
+         ("punk", String(localized: "ぱんく", bundle: .module)),
+         ("cafe", String(localized: "かふぇ", bundle: .module)),
+         ("mage", String(localized: "まほうつかい", bundle: .module)),
+         ("rapper", String(localized: "らっぱー", bundle: .module))]
 
     private static func variation(_ family: (id: String, name: String), style: String,
                                   requiredDays: Int, suffix: String = "",

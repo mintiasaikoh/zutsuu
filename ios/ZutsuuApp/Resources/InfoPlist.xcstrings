@@ -1,0 +1,40 @@
+{
+  "sourceLanguage": "ja",
+  "strings": {
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird verwendet, um die Wettervorhersage für deinen Standort abzurufen. Dein Standort verlässt das Gerät nicht, außer als Koordinaten an Apple Weather."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used to get the weather forecast for where you are. Your location never leaves the device, except as coordinates sent to Apple Weather."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の気象予報を取得するために使います。位置情報は端末の外へ送られません（Apple Weather への座標送信のみ）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치의 기상 예보를 받아오기 위해 사용해요. 위치 정보는 기기 밖으로 나가지 않아요(Apple Weather에 좌표를 보낼 때만 사용)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于获取当前位置的天气预报。位置信息不会离开设备（仅向 Apple Weather 发送坐标）。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

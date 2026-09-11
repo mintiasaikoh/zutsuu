@@ -19,25 +19,27 @@ enum RecordWeatherText {
             parts.append("\(Int(pressure.rounded())) hPa")
         }
         if let change = record.pressureChange3h, abs(change).rounded() >= 1 {
-            parts.append("3時間で\(Int(abs(change).rounded()))hPa\(change < 0 ? "低下" : "上昇")")
+            let amount = Int(abs(change).rounded())
+            parts.append(change < 0 ? String(localized: "3時間で\(amount)hPa低下")
+                                    : String(localized: "3時間で\(amount)hPa上昇"))
         } else if record.pressureChange > 0 {
-            parts.append("気圧の変化")
+            parts.append(String(localized: "気圧の変化"))
         }
         if record.pressureBaseline > 0 {
-            parts.append("この土地では低い気圧")
+            parts.append(String(localized: "この土地では低い気圧"))
         }
         if record.humidity > 0 {
-            parts.append(record.humidityPercent.map { "湿度\(Int($0.rounded()))%" } ?? "高い湿度")
+            parts.append(record.humidityPercent.map { String(localized: "湿度\(Int($0.rounded()))%") } ?? String(localized: "高い湿度"))
         }
         if record.precipitation > 0 {
-            parts.append(record.precipitationChance.map { "降水確率\(Int($0.rounded()))%" } ?? "降水")
+            parts.append(record.precipitationChance.map { String(localized: "降水確率\(Int($0.rounded()))%") } ?? String(localized: "降水"))
         }
         if record.temperature > 0 {
-            parts.append("気温の急な変化")
+            parts.append(String(localized: "気温の急な変化"))
         }
         if let celsius = record.temperatureC {
             parts.append("\(Int(celsius.rounded()))℃")
         }
-        return parts.isEmpty ? "大きな変化なし" : parts.joined(separator: " · ")
+        return parts.isEmpty ? String(localized: "大きな変化なし") : parts.joined(separator: " · ")
     }
 }

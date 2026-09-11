@@ -165,14 +165,14 @@ final class ForecastPipeline {
     private static func describe(_ error: any Error) -> String {
         switch error {
         case LocationError.denied:
-            return "位置情報の利用が許可されていません。設定アプリから許可してください。"
+            return String(localized: "位置情報の利用が許可されていません。設定アプリから許可してください。")
         case LocationError.unavailable:
-            return "現在地を取得できませんでした。下に引くともう一度試せます。"
+            return String(localized: "現在地を取得できませんでした。下に引くともう一度試せます。")
         default:
             // WeatherKit の内部エラー名（JWT 認証など）はユーザーには意味がない。
             // 原因の切り分けはログで行う。
             Self.logger.error("予報の取得に失敗: \(String(describing: error), privacy: .public)")
-            return "予報を取得できませんでした。しばらくしてからもう一度お試しください。"
+            return String(localized: "予報を取得できませんでした。しばらくしてからもう一度お試しください。")
         }
     }
 

@@ -50,13 +50,15 @@ public enum AlertNotifications {
         let body: String
         switch alert.kind {
         case .advance:
-            title = "\(time) 頃から\(level)"
-            body = summary.isEmpty ? "対策するなら今のうちに。" : "\(summary)。対策するなら今のうちに。"
+            title = String(localized: "\(time) 頃から\(level)", bundle: .module)
+            body = summary.isEmpty ? String(localized: "対策するなら今のうちに。", bundle: .module)
+                                   : String(localized: "\(summary)。対策するなら今のうちに。", bundle: .module)
         case .wakeUp:
             title = alert.assessment.factors.pressure > 0
-                ? "睡眠中に気圧が変化しました"
-                : "睡眠中に\(level)の条件になりました"
-            body = summary.isEmpty ? "\(time) 頃から\(level)。" : "\(time) 頃から\(level)。\(summary)。"
+                ? String(localized: "睡眠中に気圧が変化しました", bundle: .module)
+                : String(localized: "睡眠中に\(level)の条件になりました", bundle: .module)
+            body = summary.isEmpty ? String(localized: "\(time) 頃から\(level)。", bundle: .module)
+                                   : String(localized: "\(time) 頃から\(level)。\(summary)。", bundle: .module)
         }
         return AlertNotificationContent(identifier: identifier(for: alert), fireDate: alert.fireDate,
                                         kind: alert.kind, targetDate: alert.targetDate,
@@ -76,20 +78,21 @@ public enum AlertNotifications {
     static func factorSummary(factors: RiskFactors, risk: HourlyRisk?) -> String {
         var parts: [String] = []
         if factors.pressureChange > 0 {
-            parts.append(pressureText(risk?.pressureChanges) ?? "気圧の変化")
+            parts.append(pressureText(risk?.pressureChanges) ?? String(localized: "気圧の変化", bundle: .module))
         }
         if factors.pressureBaseline > 0 {
-            parts.append("この土地としては低い気圧")
+            parts.append(String(localized: "この土地としては低い気圧", bundle: .module))
         }
         if factors.humidity > 0 {
-            parts.append(risk.map { "湿度\(Int($0.point.humidity.rounded()))%" } ?? "高い湿度")
+            parts.append(risk.map { String(localized: "湿度\(Int($0.point.humidity.rounded()))%", bundle: .module) }
+                         ?? String(localized: "高い湿度", bundle: .module))
         }
         if factors.precipitation > 0 {
-            parts.append(risk.map { "降水確率\(Int($0.point.precipitationChance.rounded()))%" }
-                         ?? "降水の可能性")
+            parts.append(risk.map { String(localized: "降水確率\(Int($0.point.precipitationChance.rounded()))%", bundle: .module) }
+                         ?? String(localized: "降水の可能性", bundle: .module))
         }
         if factors.temperature > 0 {
-            parts.append("気温の急な変化")
+            parts.append(String(localized: "気温の急な変化", bundle: .module))
         }
         return parts.joined(separator: "、")
     }
@@ -100,18 +103,20 @@ public enum AlertNotifications {
         let windows = [(1, changes.oneHour), (3, changes.threeHour), (6, changes.sixHour)]
         guard let (hours, change) = windows.max(by: { abs($0.1) < abs($1.1) }),
               abs(change).rounded() >= 1 else { return nil }
-        return "\(hours)時間で\(Int(abs(change).rounded()))hPa\(change < 0 ? "低下" : "上昇")"
+        let amount = Int(abs(change).rounded())
+        return change < 0 ? String(localized: "\(hours)時間で\(amount)hPa低下", bundle: .module)
+                          : String(localized: "\(hours)時間で\(amount)hPa上昇", bundle: .module)
     }
 }
 
 extension RiskLevel {
-    /// 通知文面用の日本語名。ローカライズ前の暫定。
+    /// 通知・画面用の表示名（String Catalog でローカライズ。キーは日本語）。
     public var displayName: String {
         switch self {
-        case .calm: "安心"
-        case .slight: "やや注意"
-        case .caution: "注意"
-        case .danger: "危険"
+        case .calm: String(localized: "安心", bundle: .module)
+        case .slight: String(localized: "やや注意", bundle: .module)
+        case .caution: String(localized: "注意", bundle: .module)
+        case .danger: String(localized: "危険", bundle: .module)
         }
     }
 }

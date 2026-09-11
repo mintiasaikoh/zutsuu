@@ -22,7 +22,7 @@ struct RecordButton: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .accessibilityLabel("いまの調子は\(title)。記録する")
+        .accessibilityLabel(String(localized: "いまの調子は\(title)。記録する", bundle: .module))
     }
 }
 #endif

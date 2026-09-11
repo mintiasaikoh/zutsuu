@@ -4,6 +4,7 @@
 # 関連: docs/plans/2026-09-09-app-layer-plan2.md Part B, ../ZutsuuKit/Package.swift
 name: ZutsuuApp
 options:
+  developmentLanguage: ja
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -23,6 +24,9 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    # String Catalog（日本語をキーにし、en/de/ko/zh-Hans へ翻訳）。stringsdata を出して同期する。
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -33,6 +37,7 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+      - path: Resources
     dependencies:
       - package: ZutsuuKit
         product: RiskEngine
@@ -67,6 +72,7 @@ targets:
     deploymentTarget: "11.0"
     sources:
       - path: ../ZutsuuWatch/Sources
+      - path: ../ZutsuuWatch/Resources
     dependencies:
       - package: ZutsuuKit
         product: RiskEngine
@@ -97,6 +103,7 @@ targets:
     deploymentTarget: "11.0"
     sources:
       - path: ../ZutsuuWatchWidget/Sources
+      - path: ../ZutsuuWatchWidget/Resources
     dependencies:
       - package: ZutsuuKit
         product: RiskEngine

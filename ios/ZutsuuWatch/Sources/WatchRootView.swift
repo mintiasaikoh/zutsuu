@@ -18,7 +18,7 @@ struct WatchRootView: View {
                 ForEach(HealthFeeling.allCases, id: \.self) { feeling in
                     Button(feeling.label) { session.record(feeling) }
                         .buttonStyle(.bordered)
-                        .accessibilityLabel("いまの調子は\(feeling.label)。記録する")
+                        .accessibilityLabel(String(localized: "いまの調子は\(feeling.label)。記録する"))
                 }
                 if let recorded = session.lastRecorded {
                     Text("「\(recorded.label)」を iPhone に送ったよ。")

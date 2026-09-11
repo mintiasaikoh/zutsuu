@@ -27,10 +27,10 @@ public struct KiabouBedding: Sendable, Equatable, Hashable {
     }
 
     public static let choices: [Choice] = [
-        Choice(id: matchID, name: "おそろい", requiredDays: 0),
-        Choice(id: "kasumi", name: "かすみ", requiredDays: 3),
-        Choice(id: "shizuku", name: "しずく", requiredDays: 3),
-        Choice(id: "komorebi", name: "こもれび", requiredDays: 3),
+        Choice(id: matchID, name: String(localized: "おそろい", bundle: .module), requiredDays: 0),
+        Choice(id: "kasumi", name: String(localized: "かすみ", bundle: .module), requiredDays: 3),
+        Choice(id: "shizuku", name: String(localized: "しずく", bundle: .module), requiredDays: 3),
+        Choice(id: "komorebi", name: String(localized: "こもれび", bundle: .module), requiredDays: 3),
     ]
 
     /// 姿の色系統を当てはめた実際の枕・毛布の系統。未知の id は「おそろい」に倒す。

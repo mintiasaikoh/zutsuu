@@ -32,7 +32,7 @@ final class CheckInModel {
             pendingRecord = nil
             // 記録は休む姿を切り替えない（2026-09-11）。休むかは本人が rest() で選ぶ。
         } catch {
-            errorMessage = "記録できませんでした。もう一度お試しください。"
+            errorMessage = String(localized: "記録できませんでした。もう一度お試しください。", bundle: .module)
         }
     }
 

@@ -37,8 +37,8 @@ struct SettingsView: View {
                 Section {
                     Toggle("静穏時間", isOn: $quietEnabled)
                     if quietEnabled {
-                        SlotPicker("開始", value: $quietStart)
-                        SlotPicker("終了", value: $quietEnd)
+                        SlotPicker(String(localized: "開始"), value: $quietStart)
+                        SlotPicker(String(localized: "終了"), value: $quietEnd)
                     }
                 } header: {
                     Text("鳴らさない時間帯")

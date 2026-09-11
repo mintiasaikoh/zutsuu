@@ -70,7 +70,7 @@ struct KiabouTabView: View {
 
     private func outfitCell(_ outfit: KiabouOutfit) -> some View {
         unlockCell(name: outfit.name, requiredDays: outfit.requiredDays,
-                   selected: outfit.id == outfitID, selectedLabel: "いまの姿") { outfitID = outfit.id }
+                   selected: outfit.id == outfitID, selectedLabel: String(localized: "いまの姿")) { outfitID = outfit.id }
     }
 
     // MARK: - 寝具
@@ -79,8 +79,8 @@ struct KiabouTabView: View {
     private var beddingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("ねどこ").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
-            beddingRow("まくら", selection: $pillowID)
-            beddingRow("もうふ", selection: $blanketID)
+            beddingRow(String(localized: "まくら"), selection: $pillowID)
+            beddingRow(String(localized: "もうふ"), selection: $blanketID)
             if KiabouOutfit.outfit(id: outfitID).family == nil {
                 Text("まくらと毛布は、かすみ・しずく・こもれびの姿で休むときに使われます。")
                     .font(.caption).foregroundStyle(palette.muted)
@@ -97,7 +97,7 @@ struct KiabouTabView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], spacing: 8) {
                 ForEach(KiabouBedding.choices) { choice in
                     unlockCell(name: choice.name, requiredDays: choice.requiredDays,
-                               selected: choice.id == selection.wrappedValue, selectedLabel: "いまの\(title)") {
+                               selected: choice.id == selection.wrappedValue, selectedLabel: String(localized: "いまの\(title)")) {
                         selection.wrappedValue = choice.id
                     }
                 }
@@ -114,7 +114,7 @@ struct KiabouTabView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
                 ForEach(KiabouScenery.all) { scenery in
                     unlockCell(name: scenery.name, requiredDays: scenery.requiredDays,
-                               selected: scenery.id == sceneID, selectedLabel: "いまの背景") {
+                               selected: scenery.id == sceneID, selectedLabel: String(localized: "いまの背景")) {
                         sceneID = scenery.id
                     }
                 }
@@ -152,8 +152,8 @@ struct KiabouTabView: View {
         .buttonStyle(.plain)
         .disabled(!unlocked)
         .accessibilityLabel(unlocked
-            ? "\(name)\(selected ? "、選択中" : "")"
-            : "\(name)。あと\(requiredDays - recordedDays)日の記録で選べます")
+            ? (selected ? String(localized: "\(name)、選択中") : name)
+            : String(localized: "\(name)。あと\(requiredDays - recordedDays)日の記録で選べます"))
     }
 
     // MARK: - 見え方
@@ -165,7 +165,7 @@ struct KiabouTabView: View {
         .padding(16)
         .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("見え方")
+        .accessibilityLabel(String(localized: "見え方"))
     }
 
     // MARK: - 気圧との関係（設計書 v1.0 の相関レポート、記述のみ）
@@ -196,12 +196,13 @@ struct KiabouTabView: View {
     /// 記述に留める（§6.3）。「気圧に弱い」等の評価語や申告への言及は付けない。
     static func describe(_ summary: PressureCorrelationReport.Summary) -> String {
         func line(_ label: String, count: Int, bad: Int, rate: Double?) -> String {
-            guard let rate else { return "\(label)の記録はまだありません。" }
-            return "\(label)の記録 \(count) 件のうち、つらいが \(bad) 件（\(Int((rate * 100).rounded()))%）。"
+            guard let rate else { return String(localized: "\(label)の記録はまだありません。") }
+            let percent = Int((rate * 100).rounded())
+            return String(localized: "\(label)の記録 \(count) 件のうち、つらいが \(bad) 件（\(percent)%）。")
         }
-        return line("気圧が動いていたとき", count: summary.activeCount, bad: summary.activeBad,
+        return line(String(localized: "気圧が動いていたとき"), count: summary.activeCount, bad: summary.activeBad,
                     rate: summary.activeRate)
-            + "\n" + line("気圧が穏やかだったとき", count: summary.calmCount, bad: summary.calmBad,
+            + "\n" + line(String(localized: "気圧が穏やかだったとき"), count: summary.calmCount, bad: summary.calmBad,
                          rate: summary.calmRate)
     }
 

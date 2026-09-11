@@ -36,10 +36,10 @@ struct SensitivityToggles: View {
 extension DeclaredSensitivity {
     var label: String {
         switch self {
-        case .pressure: "低気圧・気圧の変化"
-        case .rain: "雨の日"
-        case .humidity: "湿気"
-        case .temperatureSwing: "寒暖差"
+        case .pressure: String(localized: "低気圧・気圧の変化")
+        case .rain: String(localized: "雨の日")
+        case .humidity: String(localized: "湿気")
+        case .temperatureSwing: String(localized: "寒暖差")
         }
     }
 }

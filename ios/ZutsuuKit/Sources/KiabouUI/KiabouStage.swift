@@ -72,10 +72,11 @@ public struct KiabouStage: View {
         }
         .clipped()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(resting ? "毛布にくるまり休むきあぼう" : "ゆっくり泳ぐきあぼう")
+        .accessibilityLabel(resting ? String(localized: "毛布にくるまり休むきあぼう", bundle: .module)
+                                    : String(localized: "ゆっくり泳ぐきあぼう", bundle: .module))
         .overlay(alignment: .bottom) {
             if scene.failed {
-                Text("きあぼうを画像で表示しています")
+                Text("きあぼうを画像で表示しています", bundle: .module)
                     .font(.caption).foregroundStyle(KiabouPalette(dim: dim).muted)
             }
         }

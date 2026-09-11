@@ -67,10 +67,10 @@ struct ComplicationView: View {
     /// 円形の小さな枠に収まる 2 文字。
     private static func short(_ level: RiskLevel) -> String {
         switch level {
-        case .calm: "安心"
-        case .slight: "やや"
-        case .caution: "注意"
-        case .danger: "危険"
+        case .calm: String(localized: "安心")
+        case .slight: String(localized: "やや")
+        case .caution: String(localized: "注意")
+        case .danger: String(localized: "危険")
         }
     }
 }
