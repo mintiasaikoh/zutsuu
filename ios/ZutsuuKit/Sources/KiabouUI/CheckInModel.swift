@@ -1,6 +1,6 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/KiabouUI/CheckInModel.swift
-// 体調の保存完了と、記録後の休む表示を管理する。
-// 保存失敗を成功と見せず、画面を戻る操作を回復記録にしないため。
+// 体調の保存完了と、本人が選ぶ休む表示を管理する。
+// 保存失敗を成功と見せず、休む・戻るの表示操作を記録にしないため。
 // 関連: HealthCheckIn.swift, KiabouCheckInView.swift, CheckInModelTests.swift
 import Foundation
 import Observation
@@ -30,10 +30,15 @@ final class CheckInModel {
             try await save(entry)
             lastRecord = entry
             pendingRecord = nil
-            isResting = feeling == .bad
+            // 記録は休む姿を切り替えない（2026-09-11）。休むかは本人が rest() で選ぶ。
         } catch {
             errorMessage = "記録できませんでした。もう一度お試しください。"
         }
+    }
+
+    /// 「きあぼうと寝る」。表示の切り替えで、体調は保存しない。
+    func rest() {
+        isResting = true
     }
 
     func returnToCheckIn() {

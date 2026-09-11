@@ -50,7 +50,10 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 1. **`onRecord` が正常終了したときだけ保存成功とみなされる。** 例外を握りつぶして戻ると、保存できていない記録が「記録しました」と表示される
 2. **同じ `id` の再試行を重複保存しない。** 保存結果が不明なまま再試行された場合、UI は同じ `id`・`date` を渡し直す（`CheckInModelTests` が固定）
 3. **`HealthFeeling` の rawValue（`"good"` / `"normal"` / `"bad"`）は変更禁止。** 保存済みデータの互換キー。
-   3 択は 2026-09-10 のユーザー決定（`.normal` を追加）。休む姿になるのは `.bad` だけ。
+   3 択は 2026-09-10 のユーザー決定（`.normal` を追加）。
+   **記録は休む姿を切り替えない**（2026-09-11 ユーザー決定。以前は `.bad` で自動的に休んだ）。
+   休むのは本人が「きあぼうと寝る」を押したときだけ（`CheckInModel.rest()`）。つらい時でも、
+   さまよって泳ぐ・揺れる姿に癒されることがあるため、休ませるかは本人が選ぶ。
    ボタンは 3 つとも同じ色（2026-09-11 ユーザー決定）。以前は `.bad` だけ塗りつぶしだったが、
    既定の選択肢に見えて「つらい」へ誘導し、選択バイアスを UI が助長するためやめた。
    表示名は「げんき／ふつう／つらい」（`label`）。「良い/悪い」は評価の語で硬いため、
@@ -75,6 +78,10 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 - 泳ぐ姿・休む姿の USDZ 各 6 種を `Resources/` に同梱（`swim-{family}-{style}.usdz` /
   `covered-{family}-{style}.usdz`、assets/kiabou/variations からのコピー、計約 9MB）。
   素材の同梱漏れはテスト（`KiabouOutfitTests.resourcesAreBundled`）で防ぐ
+- **衣装ペルソナ 5 種を採用**（2026-09-11、ユーザー要望）: ぎゃる・ぱんく・かふぇ・まほうつかい・らっぱー。
+  id は `{persona}-costume`、素材は assets/kiabou/personas/{persona}/costume.usdz と covered.usdz を
+  同じ命名でコピー（計約 10MB、`usdchecker --arkit` 全件合格）。色だけの `plain` は同梱しない。
+  解放は累計 14 日（模様の次の段。設計値で、ユーザー判断で変えてよい）
 - ロック中の表示は「あと N 日」の予告だけ。派手な演出や記録を迫る文言は出さない（§6.7）
 - 解放判定の記録日数はきあぼうタブが SwiftData から直接数える（予報の取得を待たない）
 - **記録ログには日時・良い/悪いに加えて、その時の天気の特徴を添える**（2026-09-10、ユーザー要望）。
@@ -94,7 +101,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 - 設定の「きあぼう」セクションでオン/オフ（`AppStorage` キー `kiabou.ambient`、既定オフ）
 
 - 「体調の入力に戻る」は表示切り替えであり、**「良い」を保存しない**（画面を戻る操作を回復記録にしない）
-- 「悪い」の記録後だけ、きあぼうが毛布にくるまる休む表示になる
+- 休む表示（毛布にくるまる）は「きあぼうと寝る」ボタンで本人が選ぶ。記録は表示を変えない（2026-09-11）
 - ゆらぎは 0.025〜0.4 Hz の 1/f。Reduce Motion で自動停止、手動の停止ボタンもある。中断復帰時に位置を飛ばさない（delta を 0.1 秒で切り詰め）
 - 見え方（入り江背景・薄明かり）は `AppStorage` キー `kiabou.native.cove` / `kiabou.native.dim`。端末の画面輝度は変更しない
 - 症状の軽減効果を主張する文言は置かない（設計書 §6.3 の記述主義に従う）
@@ -106,7 +113,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 追加素材（Astra 制作、アプリ実装は未着手）:
 
 - `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`
-- `assets/kiabou/personas/` — 衣装ペルソナ（ぎゃる・ぱんく等）の試作。採否未定
+- `assets/kiabou/personas/` — 衣装ペルソナ 5 種。2026-09-11 に採用し `costume` / `covered` を同梱
 - `kiabou-wardrobe-v1.zip` は展開済み内容と重複するため git 管理外
 
 ## 4.5 実装上の罠（2026-09-10）
@@ -136,7 +143,7 @@ View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `
 
 - **watchOS の 1 タップ記録**（設計書 v1.0 スコープ）は未実装。値型は共有できるが View は別途必要
 - **保存後の任意チップ（§6.6）のアプリ実装**は未着手（v1.1）
-- **personas 素材の採否**は未定
+- personas の `plain`（色だけ）版の採否は未定
 - 着せ替えの「小物だけの交換」（rest-body + accessories の組み合わせ）は未実装。
   現状は covered 一式の差し替えで代用している
 

@@ -20,15 +20,21 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
         id: "original", name: "いつもの", requiredDays: 0,
         swimResource: "kiabou.usdz", coveredResource: "covered.usdz")
 
-    /// 表示順 = 解放順。色だけ（3 日）→ 模様あり（7 日）。
+    /// 表示順 = 解放順。色だけ（3 日）→ 模様あり（7 日）→ 衣装ペルソナ（14 日）。
     public static let all: [KiabouOutfit] =
         [original]
         + families.map { family in variation(family, style: "plain", requiredDays: 3) }
         + families.map { family in variation(family, style: "pattern", requiredDays: 7,
                                              suffix: "・模様") }
+        + personas.map { persona in variation(persona, style: "costume", requiredDays: 14) }
 
     private static let families: [(id: String, name: String)] =
         [("kasumi", "かすみ"), ("shizuku", "しずく"), ("komorebi", "こもれび")]
+
+    /// 衣装ペルソナ（assets/kiabou/personas、2026-09-11 採用）。
+    private static let personas: [(id: String, name: String)] =
+        [("gyaru", "ぎゃる"), ("punk", "ぱんく"), ("cafe", "かふぇ"),
+         ("mage", "まほうつかい"), ("rapper", "らっぱー")]
 
     private static func variation(_ family: (id: String, name: String), style: String,
                                   requiredDays: Int, suffix: String = "") -> KiabouOutfit {

@@ -45,7 +45,7 @@ public struct KiabouCheckInView: View {
                     .padding(.horizontal, -24)
 
                 if model.isResting {
-                    Text("記録したよ。\nこのまま、画面を閉じて大丈夫。")
+                    Text("このまま、画面を閉じて大丈夫。")
                         .multilineTextAlignment(.center).foregroundStyle(palette.muted)
                     Button("もどる") {
                         model.returnToCheckIn()
@@ -65,6 +65,12 @@ public struct KiabouCheckInView: View {
                         Text("記録したよ。")
                             .foregroundStyle(palette.muted).accessibilityAddTraits(.updatesFrequently)
                     }
+                    Button("きあぼうと寝る") {
+                        model.rest()
+                        headingFocused = true
+                    }
+                    .frame(minHeight: 44)
+                    .accessibilityHint("きあぼうが毛布にくるまって休みます。記録はしません")
                 }
                 if let error = model.errorMessage {
                     Text(error).foregroundStyle(palette.ink).multilineTextAlignment(.center)

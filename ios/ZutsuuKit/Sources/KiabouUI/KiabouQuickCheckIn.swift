@@ -1,5 +1,5 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/KiabouUI/KiabouQuickCheckIn.swift
-// ホーム画面に埋め込む短い記録ビュー。ステージ・2 ボタン・状態・累計日数だけを持つ。
+// ホーム画面に埋め込む短い記録ビュー。ステージ・3 ボタン・寝るボタン・状態・累計日数だけを持つ。
 // 起動 2 秒で記録できる動線をホームに置くため（設計原則 §1.3、設計書 §6.1）。
 // 関連: KiabouCheckInView.swift, CheckInModel.swift, RecordButton.swift, docs/kiabou-integration.md
 #if os(iOS) || os(macOS)
@@ -40,7 +40,7 @@ public struct KiabouQuickCheckIn: View {
             }
 
             if model.isResting {
-                Text("記録したよ。ゆっくり、休んでね。")
+                Text("ゆっくり、休んでね。")
                     .foregroundStyle(palette.muted)
                 Button("もどる") { model.returnToCheckIn() }
                     .frame(minHeight: 44)
@@ -57,6 +57,10 @@ public struct KiabouQuickCheckIn: View {
                 } else if model.lastRecord != nil && model.errorMessage == nil {
                     Text("記録したよ。").foregroundStyle(palette.muted)
                 }
+                // 休むかは本人が選ぶ。記録とは独立の表示操作（kiabou-integration.md §2）。
+                Button("きあぼうと寝る") { model.rest() }
+                    .frame(minHeight: 44)
+                    .accessibilityHint("きあぼうが毛布にくるまって休みます。記録はしません")
             }
             if let error = model.errorMessage {
                 Text(error).foregroundStyle(palette.ink).multilineTextAlignment(.center)

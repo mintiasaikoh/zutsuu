@@ -23,7 +23,8 @@ private struct SaveError: Error {}
 @Suite("体調記録の状態管理")
 struct CheckInModelTests {
 
-    @Test("保存成功で記録が確定し、「悪い」のときだけ休む表示になる")
+    /// 記録は休む姿を切り替えない（2026-09-11）。「つらい」でも泳ぐ姿のまま。
+    @Test("保存成功で記録が確定し、どの体調でも休む表示にはならない")
     func successfulSave() async {
         let spy = SaveSpy()
         let model = CheckInModel(save: spy.save)
@@ -31,25 +32,24 @@ struct CheckInModelTests {
         await model.record(.bad)
         #expect(spy.attempts.map(\.feeling) == [.bad])
         #expect(model.lastRecord?.feeling == .bad)
-        #expect(model.isResting)
+        #expect(!model.isResting)
         #expect(model.errorMessage == nil)
 
-        model.returnToCheckIn()
         await model.record(.good)
         #expect(spy.attempts.map(\.feeling) == [.bad, .good])
         #expect(!model.isResting)
     }
 
-    /// 休む姿に切り替わるのは「悪い」だけ。「普通」は記録として残るが休まない。
-    @Test("「普通」は記録されるが休む表示にはならない")
-    func normalDoesNotRest() async {
+    /// 休むのは本人が「きあぼうと寝る」を押したときだけ。記録操作ではない。
+    @Test("「きあぼうと寝る」は記録を保存せずに休む表示へ切り替える")
+    func restDoesNotSave() async {
         let spy = SaveSpy()
         let model = CheckInModel(save: spy.save)
 
-        await model.record(.normal)
-        #expect(spy.attempts.map(\.feeling) == [.normal])
-        #expect(model.lastRecord?.feeling == .normal)
-        #expect(!model.isResting)
+        model.rest()
+        #expect(model.isResting)
+        #expect(spy.attempts.isEmpty)
+        #expect(model.lastRecord == nil)
     }
 
     @Test("保存失敗は成功と表示せず、エラーメッセージを出す")
@@ -105,6 +105,7 @@ struct CheckInModelTests {
         let model = CheckInModel(save: spy.save)
 
         await model.record(.bad)
+        model.rest()
         model.returnToCheckIn()
 
         #expect(spy.attempts.count == 1)

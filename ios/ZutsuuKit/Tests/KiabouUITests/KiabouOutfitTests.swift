@@ -26,6 +26,20 @@ struct KiabouOutfitTests {
         }
     }
 
+    /// 衣装ペルソナ 5 種は模様の次の段（累計 14 日）で解放される。
+    @Test("衣装ペルソナは5種あり14日で解放される")
+    func personaThresholds() {
+        let personas = KiabouOutfit.all.filter { $0.requiredDays == 14 }
+        #expect(personas.count == 5)
+        #expect(Set(personas.map(\.id)) == ["gyaru-costume", "punk-costume", "cafe-costume",
+                                           "mage-costume", "rapper-costume"])
+        for outfit in personas {
+            #expect(!outfit.isUnlocked(recordedDays: 13))
+            #expect(outfit.isUnlocked(recordedDays: 14))
+        }
+        #expect(KiabouOutfit.outfit(id: "cafe-costume").name == "かふぇ")
+    }
+
     @Test("idは一意で、未知のidは原型に倒れる")
     func idsAreStable() {
         #expect(Set(KiabouOutfit.all.map(\.id)).count == KiabouOutfit.all.count)
