@@ -68,7 +68,8 @@ cd ios/ZutsuuApp && xcodegen generate && xcodebuild -scheme ZutsuuApp -destinati
 
 シミュレータ検証の罠: AppStorage の仕込みは `simctl spawn … defaults write`（起動引数だと書き込みが効かない）、
 アプリ終了直後の defaults 書き込みは書き戻しと競合する、Watch→iPhone の `transferUserInfo` は届かない（`sendMessage` は届く）、
-署名なしビルドは entitlements が空（App Group・WeatherKit は実機で確認）。
+署名なしビルドは entitlements が空（App Group・WeatherKit は実機で確認）、
+iOS 26.3 シミュレータのスイッチ（Toggle）は短いタップを取りこぼす（システム設定アプリでも同じ。0.2 秒押すかドラッグで切り替わる。アプリの不具合ではない）。
 
 | スコア | レベル |
 |--------|--------|
