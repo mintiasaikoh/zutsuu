@@ -47,19 +47,20 @@ final class KiabouScene {
         }
     }
 
-    func load(outfit: KiabouOutfit = .original, resting: Bool) async {
+    func load(outfit: KiabouOutfit = .original, resting: Bool,
+              bedding: KiabouBedding = .matching) async {
         self.resting = resting
         failed = false
         setMotion(enabled: false)
         loadedResting = nil
-        let key = "\(outfit.id)#\(resting)"
+        let key = "\(outfit.id)#\(resting)#\(resting ? bedding.pillow + "/" + bedding.blanket : "")"
         do {
             let model: Entity
             if let cached = models[key] {
                 model = cached
             } else {
-                model = try await Entity(named: resting ? outfit.coveredResource
-                                                        : outfit.swimResource, in: .module)
+                model = resting ? try await Self.restingModel(outfit: outfit, bedding: bedding)
+                                : try await Entity(named: outfit.swimResource, in: .module)
                 try Task.checkCancellation()
                 // 素材の中心だけを合わせ、骨格のローカル変換は保持する。
                 let centered = Entity()
@@ -88,6 +89,24 @@ final class KiabouScene {
         } catch {
             failed = true
         }
+    }
+
+    /// 休む姿。色の姿は rest-body + 寝床 + 枕 + 毛布を**同じ親に無変換で**組む
+    /// （assets/kiabou/variations/ASSETS.md。部品ごとに中心へ寄せてはいけない）。
+    /// 原型・衣装ペルソナは部品素材がないので covered 一式をそのまま使う。
+    private static func restingModel(outfit: KiabouOutfit,
+                                     bedding: KiabouBedding) async throws -> Entity {
+        guard let family = outfit.family, let restBody = outfit.restBodyResource else {
+            return try await Entity(named: outfit.coveredResource, in: .module)
+        }
+        let picked = bedding.resolved(family: family)
+        let assembled = Entity()
+        for resource in [restBody, KiabouBedding.bedResource,
+                         KiabouBedding.pillowResource(picked.pillow),
+                         KiabouBedding.blanketResource(picked.blanket)] {
+            assembled.addChild(try await Entity(named: resource, in: .module))
+        }
+        return assembled
     }
 
     private func playAnimations(in entity: Entity) {

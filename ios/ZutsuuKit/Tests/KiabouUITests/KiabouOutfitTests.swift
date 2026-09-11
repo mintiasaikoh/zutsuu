@@ -53,7 +53,8 @@ struct KiabouOutfitTests {
     @Test("全外観の泳ぐ姿・休む姿の素材が同梱されている")
     func resourcesAreBundled() {
         for outfit in KiabouOutfit.all {
-            for resource in [outfit.swimResource, outfit.coveredResource] {
+            // 色の姿は covered ではなく rest-body + 寝具を組む（KiabouBedding）。
+            for resource in [outfit.swimResource, outfit.restBodyResource ?? outfit.coveredResource] {
                 #expect(Bundle.module.url(forResource: resource, withExtension: nil) != nil,
                         "missing \(resource)")
             }

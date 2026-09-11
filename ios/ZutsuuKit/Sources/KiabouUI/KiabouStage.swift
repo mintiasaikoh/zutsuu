@@ -13,16 +13,18 @@ public struct KiabouStage: View {
     let dim: Bool
     let moving: Bool
     var outfit: KiabouOutfit = .original
+    var bedding: KiabouBedding = .matching
     @State private var scene = KiabouScene()
     @State private var visible = false
 
     public init(resting: Bool, scenery: KiabouScenery = .cove, dim: Bool, moving: Bool,
-                outfit: KiabouOutfit = .original) {
+                outfit: KiabouOutfit = .original, bedding: KiabouBedding = .matching) {
         self.resting = resting
         self.scenery = scenery
         self.dim = dim
         self.moving = moving
         self.outfit = outfit
+        self.bedding = bedding
     }
 
     private var ready: Bool { scene.loadedResting == resting }
@@ -77,7 +79,9 @@ public struct KiabouStage: View {
                     .font(.caption).foregroundStyle(KiabouPalette(dim: dim).muted)
             }
         }
-        .task(id: "\(outfit.id)#\(resting)") { await scene.load(outfit: outfit, resting: resting) }
+        .task(id: "\(outfit.id)#\(resting)#\(bedding.pillow)/\(bedding.blanket)") {
+            await scene.load(outfit: outfit, resting: resting, bedding: bedding)
+        }
         .onAppear { visible = true }
         .onDisappear { visible = false; scene.stop() }
     }

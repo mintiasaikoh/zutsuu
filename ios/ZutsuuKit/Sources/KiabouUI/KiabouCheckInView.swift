@@ -13,6 +13,8 @@ public struct KiabouCheckInView: View {
     @AppStorage("kiabou.scene") private var sceneID = KiabouScenery.cove.id
     @AppStorage("kiabou.native.dim") private var dim = false
     @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
+    @AppStorage("kiabou.pillow") private var pillowID = KiabouBedding.matchID
+    @AppStorage("kiabou.blanket") private var blanketID = KiabouBedding.matchID
     @State private var model: CheckInModel
     @State private var motionOverride: Bool?
     @AccessibilityFocusState private var headingFocused: Bool
@@ -40,7 +42,8 @@ public struct KiabouCheckInView: View {
 
                 KiabouStage(resting: model.isResting, scenery: .scenery(id: sceneID), dim: dim,
                             moving: motionEnabled && scenePhase == .active,
-                            outfit: .outfit(id: outfitID))
+                            outfit: .outfit(id: outfitID),
+                            bedding: KiabouBedding(pillow: pillowID, blanket: blanketID))
                     .frame(height: 300)
                     .padding(.horizontal, -24)
 

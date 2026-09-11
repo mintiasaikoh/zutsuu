@@ -13,12 +13,17 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
     public let name: String
     public let requiredDays: Int
     let swimResource: String
+    /// 休む姿一式。`family` のある姿では使わず（同梱もしない）、rest-body + 寝具を組み立てる（KiabouBedding）。
     let coveredResource: String
+    /// 色系統（かすみ・しずく・こもれび）。寝具の「おそろい」と rest-body の解決に使う。
+    /// 原型・衣装ペルソナは nil（部品素材がないので covered をそのまま使う）。
+    public let family: String?
+    var restBodyResource: String? { family.map { _ in "rest-body-\(id).usdz" } }
 
     /// 原型。最初から選べる。
     public static let original = KiabouOutfit(
         id: "original", name: "いつもの", requiredDays: 0,
-        swimResource: "kiabou.usdz", coveredResource: "covered.usdz")
+        swimResource: "kiabou.usdz", coveredResource: "covered.usdz", family: nil)
 
     /// 表示順 = 解放順。色だけ（3 日）→ 模様あり（7 日）→ 衣装ペルソナ（14 日）。
     public static let all: [KiabouOutfit] =
@@ -26,7 +31,8 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
         + families.map { family in variation(family, style: "plain", requiredDays: 3) }
         + families.map { family in variation(family, style: "pattern", requiredDays: 7,
                                              suffix: "・模様") }
-        + personas.map { persona in variation(persona, style: "costume", requiredDays: 14) }
+        + personas.map { persona in variation(persona, style: "costume", requiredDays: 14,
+                                              family: false) }
 
     private static let families: [(id: String, name: String)] =
         [("kasumi", "かすみ"), ("shizuku", "しずく"), ("komorebi", "こもれび")]
@@ -37,11 +43,13 @@ public struct KiabouOutfit: Identifiable, Sendable, Equatable, Hashable {
          ("mage", "まほうつかい"), ("rapper", "らっぱー")]
 
     private static func variation(_ family: (id: String, name: String), style: String,
-                                  requiredDays: Int, suffix: String = "") -> KiabouOutfit {
+                                  requiredDays: Int, suffix: String = "",
+                                  family hasFamily: Bool = true) -> KiabouOutfit {
         KiabouOutfit(id: "\(family.id)-\(style)", name: family.name + suffix,
                      requiredDays: requiredDays,
                      swimResource: "swim-\(family.id)-\(style).usdz",
-                     coveredResource: "covered-\(family.id)-\(style).usdz")
+                     coveredResource: "covered-\(family.id)-\(style).usdz",
+                     family: hasFamily ? family.id : nil)
     }
 
     /// 保存された id から復元する。未知の id（将来の削除・改名）は原型に倒す。

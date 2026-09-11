@@ -87,6 +87,12 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
   id は `{persona}-costume`、素材は assets/kiabou/personas/{persona}/costume.usdz と covered.usdz を
   同じ命名でコピー（計約 10MB、`usdchecker --arkit` 全件合格）。色だけの `plain` は同梱しない。
   解放は累計 14 日（模様の次の段。設計値で、ユーザー判断で変えてよい）
+- **寝具の交換**（2026-09-12、設計書 §6.7 の「小物」）: `KiabouBedding` が枕と毛布の色系統を持つ
+  （`kiabou.pillow` / `kiabou.blanket`、値は `match`（おそろい）か `kasumi` / `shizuku` / `komorebi`）。
+  かすみ・しずく・こもれびの姿で休むときは `covered` ではなく **rest-body + bed + pillow + blanket を
+  同じ親に無変換で組む**（`assets/kiabou/variations/ASSETS.md` の手順。中心合わせは組んだ親に 1 回だけ）。
+  原型・衣装ペルソナは部品素材がないため `covered` のまま（寝具の選択は効かない旨を画面に添える）。
+  枕・毛布の解放はその色の姿（累計 3 日）と同じ。`covered-{family}-{style}.usdz` は組み立てに置き換えたので同梱から外した
 - ロック中の表示は「あと N 日」の予告だけ。派手な演出や記録を迫る文言は出さない（§6.7）
 - 解放判定の記録日数はきあぼうタブが SwiftData から直接数える（予報の取得を待たない）
 - **記録ログには日時・げんき/ふつう/つらいに加えて、その時の天気の特徴を添える**（2026-09-10、ユーザー要望）。
@@ -130,7 +136,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 
 追加素材:
 
-- `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7、Astra 制作）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`。色/模様の 6 種は 2026-09-10 に同梱済み、小物だけの交換は未実装
+- `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7、Astra 制作）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`。色/模様の 6 種は 2026-09-10、寝具（枕・毛布）の交換は 2026-09-12 に同梱済み
 - `assets/kiabou/personas/` — 衣装ペルソナ 5 種。2026-09-11 に採用し `costume` / `covered` を同梱
 - `assets/kiabou/backgrounds/` — ユーザー制作の背景 11 種（PNG 原画・プロンプト・catalog.json）。
   2026-09-11 に採用し JPEG 変換して同梱。`kiabou-backgrounds-*.zip` は展開済み内容と重複するため git 管理外
@@ -164,7 +170,5 @@ View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `
 - **watchOS の 1 タップ記録**（設計書 v1.0 スコープ）は未実装。値型は共有できるが View は別途必要
 - **保存後の任意チップ（§6.6）のアプリ実装**は未着手（v1.1）
 - personas の `plain`（色だけ）版の採否は未定
-- 着せ替えの「小物だけの交換」（rest-body + accessories の組み合わせ）は未実装。
-  現状は covered 一式の差し替えで代用している
 
 マスコットは 3 候補（きあぼう・猫・空の精）からきあぼうに確定し、没候補の素材は 2026-09-09 に削除した（git 履歴にも残っていない）。
