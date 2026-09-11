@@ -42,6 +42,7 @@ targets:
         product: KiabouUI
       - package: ZutsuuKit
         product: AppCore
+      - target: ZutsuuWatch
     entitlements:
       path: ZutsuuApp.entitlements
       properties:
@@ -58,3 +59,60 @@ targets:
         NSLocationWhenInUseUsageDescription: 現在地の気象予報を取得するために使います。位置情報は端末の外へ送られません（Apple Weather への座標送信のみ）。
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.mintiasaikoh.zutsuu.refresh]
+
+  # Plan 5: Watch アプリ（単一ターゲット形式）。予報は取らず、iPhone の要約表示と 1 タップ記録だけ。
+  ZutsuuWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: ../ZutsuuWatch/Sources
+    dependencies:
+      - package: ZutsuuKit
+        product: RiskEngine
+      - package: ZutsuuKit
+        product: KiabouUI
+      - package: ZutsuuKit
+        product: AppCore
+      - target: ZutsuuWatchWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mintiasaikoh.zutsuu.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+    entitlements:
+      path: ../ZutsuuWatch/ZutsuuWatch.entitlements
+    info:
+      path: ../ZutsuuWatch/Info.plist
+      properties:
+        CFBundleDisplayName: zutsuu
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.mintiasaikoh.zutsuu
+        WKRunsIndependentlyOfCompanionApp: false
+
+  ZutsuuWatchWidget:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: ../ZutsuuWatchWidget/Sources
+    dependencies:
+      - package: ZutsuuKit
+        product: RiskEngine
+      - package: ZutsuuKit
+        product: AppCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mintiasaikoh.zutsuu.watchkitapp.complication
+        TARGETED_DEVICE_FAMILY: "4"
+    entitlements:
+      path: ../ZutsuuWatchWidget/ZutsuuWatchWidget.entitlements
+    info:
+      path: ../ZutsuuWatchWidget/Info.plist
+      properties:
+        CFBundleDisplayName: zutsuu
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

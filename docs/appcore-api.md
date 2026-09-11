@@ -23,6 +23,7 @@ ios/ZutsuuKit/Tests/AppCoreTests/  # 5 ファイル
 | `NotificationReconciler.swift` | 保留中の予約と新しい予定の突き合わせ（温存・取消・追加） |
 | `NeutralClimatology.swift` | テーブルが読めないときの退避用 `PressureClimatology`（常に 0.5） |
 | `ReanalysisClimatology.swift` | 同梱の気圧平年値テーブル（Plan 6、2026-09-12） |
+| `WatchPayload.swift` | iPhone ⇄ Watch の値型 `WatchContext` / `WatchCheckIn`（Plan 5、2026-09-12） |
 | `Resources/slp-climatology.bin` | テーブル本体（約 740KB）。`tools/climatology/build_slp_table.py` で生成 |
 
 ## 2. 公開 API
@@ -96,6 +97,13 @@ NCEP/NCAR Reanalysis 1 の日平均海面気圧 1991〜2020 年から作った�
 - 時別の値を日平均の分布に当てるため、裾は実際よりやや狭い（「低い」判定が出やすい側）。時別データでの作り直しは v1.1 以降の検討
 
 アプリ層（`ForecastPipeline`）は起動時に一度 `bundled()` を試み、失敗したら `NeutralClimatology` に倒してログに残す。
+
+### `WatchContext` / `WatchCheckIn`（Plan 5、2026-09-12）
+
+- `WatchContext`: 予報更新ごとに iPhone → Watch へ送る要約。`updatedAt`、今後 24 時間の `(date, level)`、次の通知の見出し、累計記録日数。
+  `level(at:)` は更新から 6 時間（`staleAfter`）より古ければ nil（古い予報を今と偽らない）。JSON で往復し `version` を持つ
+- `WatchCheckIn`: Watch の記録。`id` は iPhone 側の重複防止キー、`feeling` は `HealthFeeling.rawValue` の文字列（AppCore は KiabouUI に依存しない）
+- 送受信は `WatchSessionBridge`（iPhone）と `WatchSession`（Watch）。キーは両側で `context` / `checkIn`
 
 ### `NeutralClimatology`
 

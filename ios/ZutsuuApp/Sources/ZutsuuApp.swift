@@ -1,7 +1,7 @@
 // /Users/mymac/zutsuu/ios/ZutsuuApp/Sources/ZutsuuApp.swift
 // アプリの入口。SwiftData コンテナと予報パイプラインを組み立て、バックグラウンド更新を登録する。
 // 配線をここ 1 箇所に集め、判断は AppCore / RiskEngine に置くため。
-// 関連: ForecastPipeline.swift, BackgroundRefresh.swift, docs/plans/2026-09-09-app-layer-plan2.md
+// 関連: ForecastPipeline.swift, BackgroundRefresh.swift, WatchSessionBridge.swift, docs/plans/2026-09-09-app-layer-plan2.md
 import SwiftUI
 import SwiftData
 
@@ -9,6 +9,7 @@ import SwiftData
 struct ZutsuuApp: App {
     private let container: ModelContainer
     private let pipeline: ForecastPipeline
+    private let watchBridge: WatchSessionBridge
 
     init() {
         do {
@@ -20,6 +21,7 @@ struct ZutsuuApp: App {
         }
         let pipeline = ForecastPipeline(store: CheckInStore(context: container.mainContext))
         self.pipeline = pipeline
+        watchBridge = WatchSessionBridge(pipeline: pipeline)
         BackgroundRefresh.register(pipeline)
     }
 

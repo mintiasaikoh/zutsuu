@@ -22,6 +22,8 @@ final class ForecastPipeline {
     private(set) var nextAlert: AlertNotificationContent?
     /// 記録のある暦日の累計。記録の見返り表示に使う。
     private(set) var recordedDays = 0
+    /// Watch へ送る要約の出口。予報更新と記録のたびに呼ぶ（Plan 5）。
+    var watchContextSink: ((WatchContext) -> Void)?
 
     private var series: [WeatherPoint] = []
     private var coordinate: Coordinate?
@@ -80,6 +82,7 @@ final class ForecastPipeline {
             lastUpdated = now
             recordedDays = (try? store.recordedDayCount(calendar: calendar)) ?? 0
             await rescheduleNotifications(now: now)
+            publishWatchContext(now: now)
             if attribution == nil { attribution = try? await weather.attribution() }
         } catch {
             errorMessage = Self.describe(error)
@@ -92,6 +95,23 @@ final class ForecastPipeline {
         try store.save(checkIn, risk: risk(at: checkIn.date))
         recordedDays = (try? store.recordedDayCount(calendar: .current)) ?? recordedDays
         await rescheduleNotifications(now: Date())
+        publishWatchContext(now: Date())
+    }
+
+    /// Watch からの記録。iPhone と同じ保存経路（重複防止・再学習・再予約）を通す。
+    func record(fromWatch checkIn: WatchCheckIn) async throws {
+        guard let feeling = HealthFeeling(rawValue: checkIn.feeling) else { return }
+        try await record(HealthCheckIn(id: checkIn.id, date: checkIn.date, feeling: feeling))
+    }
+
+    /// 今後 24 時間のレベルと次の通知の見出しだけを Watch へ渡す（設計書 §7.2 の線引き）。
+    private func publishWatchContext(now: Date) {
+        guard let sink = watchContextSink, !risks.isEmpty else { return }
+        let hourly = upcoming.prefix(24).map {
+            WatchContext.HourLevel(date: $0.point.date, level: $0.assessment.level)
+        }
+        sink(WatchContext(updatedAt: now, hourly: Array(hourly),
+                          nextAlertTitle: nextAlert?.title, recordedDays: recordedDays))
     }
 
     /// 表示用の現在時刻のリスク。系列にその時刻がなければ nil。

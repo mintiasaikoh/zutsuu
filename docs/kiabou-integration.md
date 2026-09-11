@@ -167,7 +167,7 @@ View 層（KiabouCheckInView / KiabouStage / KiabouScene / KiabouPalette）は `
 
 ## 6. 未確定
 
-- **watchOS の 1 タップ記録**（設計書 v1.0 スコープ）は未実装。計画は `docs/plans/2026-09-12-watchos-plan5.md`（記録の転送方式などユーザーの決定待ち）
+- **watchOS の 1 タップ記録**は 2026-09-12 に実装（`ios/ZutsuuWatch`、`docs/plans/2026-09-12-watchos-plan5.md`）。Watch は `HealthFeeling` の値型だけを使い、View は Watch 専用。実機での到達保証とコンプリケーション表示は未確認
 - **保存後の任意チップ（§6.6）のアプリ実装**は未着手（v1.1）
 - personas の `plain`（色だけ）版の採否は未定
 

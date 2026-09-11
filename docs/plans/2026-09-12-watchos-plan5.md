@@ -1,7 +1,20 @@
 # Plan 5: watchOS — コンプリケーション・通知・1 タップ記録
 
 作成日: 2026-09-12。設計書 §7.2（線引き）と §10 v1.0（Watch: コンプリケーション、通知、1 タップ記録）の実装計画。
-**実装は未着手。** 記録の転送方式など、下の「決定が要る点」をユーザーが決めてから着手する。
+
+## 実施記録（2026-09-12、ユーザー不在時に作業者判断で実装）
+
+- 決定 1 は **A（WatchConnectivity）** で実装。ただし iPhone が届く範囲なら即時の `sendMessage` を先に使い、
+  失敗・不達時に `transferUserInfo` へ落とす。理由: シミュレータでは Watch → iPhone の `transferUserInfo` が
+  iPhone 側に配達されず（要約の逆方向 `updateApplicationContext` は届く）、即時経路がないと動作確認ができない。
+  両方届いても iPhone 側は同じ `id` を重複保存しない
+- 決定 2・3 は計画どおり。決定 4（通知アクション）は付けていない
+- ターゲット: `ZutsuuWatch`（単一ターゲット watch アプリ、`com.mintiasaikoh.zutsuu.watchkitapp`）と
+  `ZutsuuWatchWidget`（WidgetKit、`.complication`）。App Group `group.com.mintiasaikoh.zutsuu` で要約を共有
+- 検証（ペアリングした iPhone 17 Pro + Apple Watch Series 11 シミュレータ）: iPhone の予報更新 → Watch に「いま 注意」が出る →
+  Watch で記録 → iPhone のログに「Watch の記録を保存」、記録日数が進む。**iPhone 終了中の到達保証（transferUserInfo）と
+  コンプリケーションの文字盤表示はシミュレータで検証できていない**（実機の宿題）
+- 実機では App ID `com.mintiasaikoh.zutsuu.watchkitapp` と App Group の登録が Developer Portal 側で必要
 
 **参照:** 設計書 §7.2・§7.3・§10、`docs/kiabou-integration.md` §6（watchOS の 1 タップ記録は未実装）、
 `docs/appcore-api.md` §3（アプリ層が守ること）、`docs/personalrisk-api.md` §4（記録と要因の突き合わせ）
