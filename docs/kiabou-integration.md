@@ -24,7 +24,9 @@ ios/ZutsuuKit/Sources/KiabouUI/
 ├── KiabouScenery.swift        # 背景と解放条件
 ├── PinkMotion.swift           # 1/f ゆらぎ
 ├── KiabouPalette.swift        # 昼・薄明かり配色
-└── Resources/                 # USDZ（原型 + 着せ替え 6 + ペルソナ 5、泳ぐ/休む各）、背景 JPEG 11、cove/preview/covered PNG
+├── Resources/                 # USDZ（泳ぐ: 原型 + 着せ替え 6 + ペルソナ 5。休む: 原型・ペルソナは covered、
+│                              #   着せ替えは rest-body 6 + bed + pillow 3 + blanket 3）、背景 JPEG 11、cove/preview/covered PNG
+└── Resources/Localizable.xcstrings  # 5 言語（キーは日本語。appcore-api.md §5）
 ```
 
 RiskEngine と KiabouUI は相互に依存しない。体調と気象の関連付け・学習はアプリ層の責務。

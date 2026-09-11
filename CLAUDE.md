@@ -45,8 +45,30 @@ gh workflow run check.yml
 
 気圧（最大11pt）＋湿度（最大3pt）＋降水（最大2pt）＋気温変動（最大2pt）= 最大18pt
 
-なお本ファイルとSPEC.mdはレガシーのTypeScript版（LINE通知）を記述したもの。
+なお本ファイルの上記とSPEC.mdはレガシーのTypeScript版（LINE通知）を記述したもの。
 iOSアプリ版のリスクエンジンは別実装であり、仕様は `docs/riskengine-api.md` を参照。
+
+## iOS アプリの構成（2026-09-12 時点）
+
+| 場所 | 中身 | 正典 |
+|---|---|---|
+| `ios/ZutsuuKit` | Swift Package: RiskEngine / PersonalRisk / KiabouUI / AppCore | `docs/riskengine-api.md`, `docs/personalrisk-api.md`, `docs/kiabou-integration.md`, `docs/appcore-api.md` |
+| `ios/ZutsuuAds` | Swift Package: AdPolicy（純粋ロジック）/ ZutsuuAds（AdMob ラッパー）。ZutsuuKit に依存しない | `docs/plans/2026-09-12-admob-plan4.md` |
+| `ios/ZutsuuApp` | iPhone アプリ（xcodegen。`project.yml` が正、`.xcodeproj` は生成物） | `docs/plans/2026-08-30-global-ios-app-design.md` |
+| `ios/ZutsuuWatch`, `ios/ZutsuuWatchWidget` | Watch アプリとコンプリケーション | `docs/plans/2026-09-12-watchos-plan5.md` |
+| `tools/climatology`, `tools/localization` | 平年値テーブルの生成、String Catalog の再抽出 | 各 README |
+
+```bash
+# パッケージのテスト
+cd ios/ZutsuuKit && swift test
+cd ios/ZutsuuAds && swift test --filter AdPolicyTests
+# アプリのビルド（シミュレータ）
+cd ios/ZutsuuApp && xcodegen generate && xcodebuild -scheme ZutsuuApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+```
+
+シミュレータ検証の罠: AppStorage の仕込みは `simctl spawn … defaults write`（起動引数だと書き込みが効かない）、
+アプリ終了直後の defaults 書き込みは書き戻しと競合する、Watch→iPhone の `transferUserInfo` は届かない（`sendMessage` は届く）、
+署名なしビルドは entitlements が空（App Group・WeatherKit は実機で確認）。
 
 | スコア | レベル |
 |--------|--------|

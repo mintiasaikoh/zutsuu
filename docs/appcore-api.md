@@ -68,7 +68,7 @@ hPa / ℃ / % / mm へ揃える唯一の場所。`riskengine-api.md` §2.1 の�
 - 時刻は `calendar` のタイムゾーン、`H:mm`（先頭ゼロなし）
 - **日本語で確定させる段階。** ローカライズ（5 言語）は文面確定後に String Catalog へ移す
 
-`RiskLevel.displayName`（安心 / やや注意 / 注意 / 危険）もここで定義する。暫定。
+`RiskLevel.displayName`（安心 / やや注意 / 注意 / 危険）もここで定義する（String Catalog でローカライズ、§5）。
 
 ### `NotificationReconciler.reconcile(pending:scheduled:now:) -> ReconcilePlan`
 
