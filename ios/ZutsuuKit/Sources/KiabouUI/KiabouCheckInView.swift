@@ -1,5 +1,5 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/KiabouUI/KiabouCheckInView.swift
-// 1タップ体調入力と、記録後にきあぼうと休む画面。
+// 1タップ体調入力と、本人が選んできあぼうと休む画面（全画面版。アプリ未使用、watchOS 向けに保持）。
 // 個人化につながる体調記録を中心に、静かな背景と相棒を統合するため。
 // 関連: CheckInModel.swift, KiabouStage.swift, HealthCheckIn.swift, docs/kiabou-integration.md
 #if os(iOS) || os(macOS)

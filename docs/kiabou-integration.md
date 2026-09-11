@@ -12,14 +12,19 @@
 
 ```
 ios/ZutsuuKit/Sources/KiabouUI/
-├── HealthCheckIn.swift      # 公開値型（記録 1 件）
-├── CheckInModel.swift       # 保存状態遷移（internal）
-├── KiabouCheckInView.swift  # 公開 View
-├── KiabouStage.swift        # 背景 + 3D 表示
-├── KiabouScene.swift        # RealityKit 読み込み
-├── PinkMotion.swift         # 1/f ゆらぎ
-├── KiabouPalette.swift      # 昼・薄明かり配色
-└── Resources/               # kiabou.usdz / covered.usdz / cove.png / preview.png / covered.png
+├── HealthCheckIn.swift        # 公開値型（記録 1 件）
+├── CheckInModel.swift         # 保存状態遷移と休む表示（internal）
+├── KiabouQuickCheckIn.swift   # 公開 View。ホーム埋め込み版（アプリが使うのはこちら）
+├── KiabouCheckInView.swift    # 公開 View。全画面版（アプリ未使用、watchOS 向けに保持）
+├── RecordButton.swift         # げんき／ふつう／つらい の記録ボタン
+├── KiabouStage.swift          # 背景 + 3D 表示
+├── KiabouScene.swift          # RealityKit 読み込み
+├── KiabouAmbientBackdrop.swift # 背面遊泳モード
+├── KiabouOutfit.swift         # 着せ替えと解放条件
+├── KiabouScenery.swift        # 背景と解放条件
+├── PinkMotion.swift           # 1/f ゆらぎ
+├── KiabouPalette.swift        # 昼・薄明かり配色
+└── Resources/                 # USDZ（原型 + 着せ替え 6 + ペルソナ 5、泳ぐ/休む各）、背景 JPEG 11、cove/preview/covered PNG
 ```
 
 RiskEngine と KiabouUI は相互に依存しない。体調と気象の関連付け・学習はアプリ層の責務。
@@ -27,11 +32,11 @@ RiskEngine と KiabouUI は相互に依存しない。体調と気象の関連�
 ## 2. 公開 API と契約
 
 ```swift
-public struct KiabouCheckInView: View {          // 全画面版（記録タブ）。見え方の設定を含む
+public struct KiabouCheckInView: View {          // 全画面版（アプリ未使用、watchOS 向けに保持）。見え方の設定を含む
     public init(onRecord: @escaping @MainActor (HealthCheckIn) async throws -> Void)
 }
-public struct KiabouQuickCheckIn: View {         // ホーム埋め込み版。ステージ + 2 ボタン + 状態 + 累計日数
-    public init(recordedDays: Int? = nil,
+public struct KiabouQuickCheckIn: View {         // ホーム埋め込み版。ステージ + 3 ボタン + 寝るボタン + 状態 + 累計日数
+    public init(recordedDays: Int? = nil, showsStage: Bool = true,
                 onRecord: @escaping @MainActor (HealthCheckIn) async throws -> Void)
 }
 public struct KiabouPalette: Sendable {          // 3 色 + 紙白。アプリ全体が共有する配色
@@ -84,7 +89,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
   解放は累計 14 日（模様の次の段。設計値で、ユーザー判断で変えてよい）
 - ロック中の表示は「あと N 日」の予告だけ。派手な演出や記録を迫る文言は出さない（§6.7）
 - 解放判定の記録日数はきあぼうタブが SwiftData から直接数える（予報の取得を待たない）
-- **記録ログには日時・良い/悪いに加えて、その時の天気の特徴を添える**（2026-09-10、ユーザー要望）。
+- **記録ログには日時・げんき/ふつう/つらいに加えて、その時の天気の特徴を添える**（2026-09-10、ユーザー要望）。
   記録時に `HourlyRisk` の生値（レベル・気圧 hPa・3 時間変化・湿度%・降水確率%・気温℃）を
   `CheckInRecord` に optional で保存し、「安心 · 1018 hPa · 3時間で1hPa上昇 · 23℃」の形で出す。
   生値のない古い記録は要因名だけ（「高い湿度 · 降水」）。文面は記述のみで評価語を付けない
@@ -123,12 +128,12 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 
 `Sources/KiabouUI/Resources/` は `assets/kiabou/` からの**コピー**。原本は Blender ファイルと生成スクリプト（`assets/kiabou/README.md`）。素材を更新したら再生成して同名でコピーし直すこと。二重管理なのは、SwiftPM のターゲット外からリソースを参照できないため。
 
-追加素材（Astra 制作、アプリ実装は未着手）:
+追加素材:
 
-- `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`
+- `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7、Astra 制作）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`。色/模様の 6 種は 2026-09-10 に同梱済み、小物だけの交換は未実装
 - `assets/kiabou/personas/` — 衣装ペルソナ 5 種。2026-09-11 に採用し `costume` / `covered` を同梱
 - `assets/kiabou/backgrounds/` — ユーザー制作の背景 11 種（PNG 原画・プロンプト・catalog.json）。
-  2026-09-11 に採用し JPEG 変換して同梱。`kiabou-backgrounds-v1.zip` は展開済み内容と重複するため git 管理外
+  2026-09-11 に採用し JPEG 変換して同梱。`kiabou-backgrounds-*.zip` は展開済み内容と重複するため git 管理外
 - `kiabou-wardrobe-v1.zip` は展開済み内容と重複するため git 管理外
 
 ## 4.5 実装上の罠（2026-09-10）
