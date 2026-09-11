@@ -1,6 +1,6 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/PersonalRisk/PersonalRiskModel.swift
 // 体調記録から学習するロジスティック回帰と、通知閾値の個人化判定。
-// 汎用スコアを事前分布にした縮小推定で、記録ゼロでも挙動を変えないため。
+// 文献で較正した汎用スコアを事前分布にした縮小推定で、記録ゼロでも母集団の証拠に沿うため。
 // 関連: ../RiskEngine/RiskFactors.swift, docs/personalrisk-api.md, 設計書 §6.5
 import Foundation
 import RiskEngine
@@ -42,10 +42,33 @@ public struct PersonalRiskModel: Sendable, Equatable {
     /// 切片の許容範囲。学習データが全て同一ラベルでも確率が 0/1 に張り付かない広さ。
     public static let interceptRange: ClosedRange<Double> = -10...2
 
-    /// 汎用スコアと同じ判定を返すモデル。記録ゼロの状態はこれと完全一致する。
+    /// 汎用スコアと同じ判定を返すモデル。通知判定の境界（1・4・7pt 相当の確率）の物差し。
     public static let generic = PersonalRiskModel(
         pressureChange: 1, pressureBaseline: 1, humidity: 1,
         precipitation: 1, temperature: 1, intercept: -4)
+
+    /// 集団データの効果量から置いた要因の重み比 [気圧変化, 絶対気圧, 湿度, 降水, 気温変動]。
+    /// Katsuki 2023（gain: 気圧変化 11.7 > 湿度 7.1 > 絶対気圧 3.9 > 降雨 3.1）と
+    /// Dixon 2019（湿度が最強、降水・気温は有意差なし）を突き合わせた**専門家較正**であり、
+    /// 効果量からの導出値ではない（personalrisk-api.md §6）。
+    public static let calibrationRatios: [Double] = [1.0, 0.9, 1.3, 0.6, 0.6]
+
+    /// 各要因の最大配点（riskengine-api.md §3）。較正の正規化にだけ使う。
+    static let maxPoints: [Double] = [8, 3, 3, 2, 2]
+
+    /// 文献で較正した事前分布の中心。記録ゼロ・申告なしの通知判定はこれになる。
+    ///
+    /// 重み比を「満点 18pt の logit が `.generic` と同じ」になるよう正規化するので、
+    /// 0pt と 18pt では汎用と確率が一致し、中間の配分だけが文献の比で傾く。
+    /// 通知判定と表示レベルの差は全組み合わせで最大 1 段（テストで固定）。
+    public static let calibrated: PersonalRiskModel = {
+        let fullScore = zip(calibrationRatios, maxPoints).reduce(0) { $0 + $1.0 * $1.1 }
+        let scale = maxPoints.reduce(0, +) / fullScore
+        let w = calibrationRatios.map { $0 * scale }
+        return PersonalRiskModel(pressureChange: w[0], pressureBaseline: w[1], humidity: w[2],
+                                 precipitation: w[3], temperature: w[4],
+                                 intercept: generic.intercept)
+    }()
 
     public init(pressureChange: Double, pressureBaseline: Double, humidity: Double,
                 precipitation: Double, temperature: Double, intercept: Double) {
@@ -117,7 +140,7 @@ extension PersonalRiskModel {
     /// 気象的に相関する要因への傾け。主要因の半分以下に抑える。
     public static let relatedTilt = 0.35
 
-    /// 体質申告から事前分布モデルを作る。申告なしなら `.generic` と同一。
+    /// 体質申告から事前分布モデルを作る。`.calibrated` を起点に傾け、申告なしならそれと同一。
     ///
     /// **気象要因は独立ではない**ことを大前提に置く（設計書 §6.5）。雨の日は湿度が
     /// 高く、低気圧・気圧変化を伴うことが多い。本人が「雨に弱い」と名指しした要因が
@@ -143,14 +166,18 @@ extension PersonalRiskModel {
                 tilt[0] += relatedTilt   // 前線通過は寒暖差と気圧変化が同時に来る
             }
         }
-        return PersonalRiskModel(pressureChange: 1 + tilt[0], pressureBaseline: 1 + tilt[1],
-                                 humidity: 1 + tilt[2], precipitation: 1 + tilt[3],
-                                 temperature: 1 + tilt[4], intercept: generic.intercept)
+        let base = calibrated
+        return PersonalRiskModel(pressureChange: base.pressureChange + tilt[0],
+                                 pressureBaseline: base.pressureBaseline + tilt[1],
+                                 humidity: base.humidity + tilt[2],
+                                 precipitation: base.precipitation + tilt[3],
+                                 temperature: base.temperature + tilt[4],
+                                 intercept: base.intercept)
     }
 
     /// 事前分布を中心に置いた MAP 推定（L2 罰則付きロジスティック回帰）。
     ///
-    /// `prior` の既定は `.generic`（汎用スコアと同じ判定）。体質申告があるときは
+    /// `prior` の既定は `.calibrated`（文献で較正した汎用スコア）。体質申告があるときは
     /// `prior(for:)` の結果を渡す。`priorWeight` は事前分布の強さで、擬似観測数として
     /// 読める。既定 24 は「記録が 1 か月弱溜まった頃にデータと事前分布が拮抗する」重さ。
     /// 観測ゼロなら勾配がゼロなので事前分布をそのまま返す（＝申告だけの初日から効く）。
@@ -159,7 +186,7 @@ extension PersonalRiskModel {
     /// 学習は射影勾配降下。決定的（乱数・並列なし）で、同じ入力は同じモデルを返す。
     /// 反復数固定なので実行時間は観測数に比例し、数百件でもミリ秒台に収まる。
     public static func fitted(to observations: [SymptomObservation],
-                              prior priorModel: PersonalRiskModel = .generic,
+                              prior priorModel: PersonalRiskModel = .calibrated,
                               priorWeight: Double = 24) -> PersonalRiskModel {
         let prior = priorModel.clamped().parameters
         var parameters = prior

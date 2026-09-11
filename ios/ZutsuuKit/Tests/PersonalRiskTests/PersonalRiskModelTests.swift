@@ -1,6 +1,6 @@
 // /Users/mymac/zutsuu/ios/ZutsuuKit/Tests/PersonalRiskTests/PersonalRiskModelTests.swift
 // 個人化回帰の学習と通知判定を、汎用一致・縮小・符号制約を軸に検証する。
-// 「記録ゼロなら挙動を変えない」という §6.5 の中心の約束を固定するため。
+// 「記録ゼロなら較正済み事前分布に一致し、表示から 1 段以上ずれない」という §6.5 の約束を固定するため。
 // 関連: ../../Sources/PersonalRisk/PersonalRiskModel.swift, docs/personalrisk-api.md
 import Testing
 import Foundation
@@ -51,17 +51,71 @@ struct PersonalRiskModelTests {
         #expect(checked == 1296)
     }
 
-    @Test("記録ゼロの学習は汎用モデルをそのまま返す")
-    func emptyObservationsReturnGeneric() {
-        #expect(PersonalRiskModel.fitted(to: []) == .generic)
+    // MARK: - 較正済み事前分布（§3 1a）
+
+    /// 較正は満点の logit を汎用と揃える正規化なので、0pt と 18pt の確率は汎用と一致する。
+    @Test("較正済み事前分布は0ptと18ptで汎用と同じ確率になる")
+    func calibratedMatchesGenericAtExtremes() {
+        let calm = factors()
+        let full = factors(8, baseline: 3, humidity: 3, precipitation: 2, temperature: 2)
+        let calibrated = PersonalRiskModel.calibrated
+        #expect(abs(calibrated.probability(of: calm) - PersonalRiskModel.generic.probability(of: calm)) < 1e-12)
+        #expect(abs(calibrated.probability(of: full) - PersonalRiskModel.generic.probability(of: full)) < 1e-12)
+        #expect(calibrated.intercept == PersonalRiskModel.generic.intercept)
     }
 
-    @Test("事前分布の強さが不正なら汎用モデルに倒す")
-    func invalidPriorWeightFallsBackToGeneric() {
+    /// 文献（Katsuki 2023、Dixon 2019）の順序: 湿度 > 気圧変化 > 絶対気圧 > 降水 = 気温変動。
+    @Test("較正済みの重みは文献の順序を保つ")
+    func calibratedKeepsLiteratureOrdering() {
+        let m = PersonalRiskModel.calibrated
+        #expect(m.humidity > m.pressureChange)
+        #expect(m.pressureChange > m.pressureBaseline)
+        #expect(m.pressureBaseline > m.precipitation)
+        #expect(m.precipitation == m.temperature)
+        for weight in [m.pressureChange, m.pressureBaseline, m.humidity, m.precipitation, m.temperature] {
+            #expect(PersonalRiskModel.weightRange.contains(weight))
+        }
+    }
+
+    /// 記録ゼロの通知判定が表示レベルからずれるのは 1 段まで。全 1296 通りで固定する。
+    @Test("較正済み事前分布の通知判定は全組み合わせで表示レベルから1段以内")
+    func calibratedStaysWithinOneLevelOfSpec() {
+        var checked = 0
+        var shifted = 0
+        for pressureChange in 0...8 {
+            for baseline in 0...3 {
+                for humidity in 0...3 {
+                    for precipitation in 0...2 {
+                        for temperature in 0...2 {
+                            let f = factors(pressureChange, baseline: baseline,
+                                            humidity: humidity, precipitation: precipitation,
+                                            temperature: temperature)
+                            let level = PersonalRiskModel.calibrated.schedulingLevel(for: f)
+                            let gap = abs(level.rawValue - specLevel(total: f.total).rawValue)
+                            #expect(gap <= 1, "\(f)")
+                            if gap == 1 { shifted += 1 }
+                            checked += 1
+                        }
+                    }
+                }
+            }
+        }
+        #expect(checked == 1296)
+        #expect(shifted > 0)
+    }
+
+    @Test("記録ゼロの学習は事前分布をそのまま返す")
+    func emptyObservationsReturnPrior() {
+        #expect(PersonalRiskModel.fitted(to: []) == .calibrated)
+        #expect(PersonalRiskModel.fitted(to: [], prior: .generic) == .generic)
+    }
+
+    @Test("事前分布の強さが不正なら事前分布に倒す")
+    func invalidPriorWeightFallsBackToPrior() {
         let observations = [SymptomObservation(factors: factors(humidity: 3), wasBad: true)]
-        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: 0) == .generic)
-        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: -1) == .generic)
-        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: .nan) == .generic)
+        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: 0) == .calibrated)
+        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: -1) == .calibrated)
+        #expect(PersonalRiskModel.fitted(to: observations, priorWeight: .nan) == .calibrated)
     }
 
     // MARK: - 学習の方向
@@ -86,9 +140,9 @@ struct PersonalRiskModelTests {
         #expect(fitted.schedulingLevel(for: humid) > .slight)
     }
 
-    /// 同じ傾向の記録でも、件数が少ないうちは汎用の近くに留まる（縮小推定）。
+    /// 同じ傾向の記録でも、件数が少ないうちは事前分布の近くに留まる（縮小推定）。
     /// n の閾値で挙動が急変しないことが §6.3 改訂の条件。
-    @Test("記録が少ないほど汎用モデルの近くに留まる")
+    @Test("記録が少ないほど事前分布の近くに留まる")
     func fewObservationsStayNearGeneric() {
         func humidityShift(count: Int) -> Double {
             let observations =
@@ -96,7 +150,8 @@ struct PersonalRiskModelTests {
                       count: count)
                 + Array(repeating: SymptomObservation(factors: factors(6, baseline: 2), wasBad: false),
                         count: count)
-            return abs(PersonalRiskModel.fitted(to: observations).humidity - 1)
+            return abs(PersonalRiskModel.fitted(to: observations).humidity
+                       - PersonalRiskModel.calibrated.humidity)
         }
         let small = humidityShift(count: 2)
         let large = humidityShift(count: 100)
@@ -121,31 +176,32 @@ struct PersonalRiskModelTests {
 
     // MARK: - 体質の事前申告（§6.5）
 
-    @Test("申告なしの事前分布は汎用モデルと同一になる")
-    func emptyDeclarationIsGeneric() {
-        #expect(PersonalRiskModel.prior(for: []) == .generic)
+    @Test("申告なしの事前分布は較正済みモデルと同一になる")
+    func emptyDeclarationIsCalibrated() {
+        #expect(PersonalRiskModel.prior(for: []) == .calibrated)
     }
 
     /// 気象要因は独立ではない（雨の日は高湿で、気圧の変化を伴う）。
     /// 申告は主要因を大きく、気象的に相関する要因を小さく傾ける。
     @Test("申告は主要因を大きく、相関する要因を小さく傾ける")
     func declarationTiltsMainAndRelatedWeights() {
+        let base = PersonalRiskModel.calibrated
         let humid = PersonalRiskModel.prior(for: [.humidity])
-        #expect(humid.humidity == 1 + PersonalRiskModel.declarationTilt)
-        #expect(humid.precipitation == 1 + PersonalRiskModel.relatedTilt)
-        #expect(humid.pressureChange == 1 && humid.temperature == 1)
-        #expect(humid.intercept == PersonalRiskModel.generic.intercept)
+        #expect(humid.humidity == base.humidity + PersonalRiskModel.declarationTilt)
+        #expect(humid.precipitation == base.precipitation + PersonalRiskModel.relatedTilt)
+        #expect(humid.pressureChange == base.pressureChange && humid.temperature == base.temperature)
+        #expect(humid.intercept == base.intercept)
 
         let rain = PersonalRiskModel.prior(for: [.rain])
-        #expect(rain.precipitation == 1 + PersonalRiskModel.declarationTilt)
-        #expect(rain.humidity == 1 + PersonalRiskModel.relatedTilt)
-        #expect(rain.pressureChange == 1 + PersonalRiskModel.relatedTilt)
-        #expect(rain.temperature == 1)
+        #expect(rain.precipitation == base.precipitation + PersonalRiskModel.declarationTilt)
+        #expect(rain.humidity == base.humidity + PersonalRiskModel.relatedTilt)
+        #expect(rain.pressureChange == base.pressureChange + PersonalRiskModel.relatedTilt)
+        #expect(rain.temperature == base.temperature)
 
         let pressure = PersonalRiskModel.prior(for: [.pressure])
-        #expect(pressure.pressureChange == 1 + PersonalRiskModel.declarationTilt)
-        #expect(pressure.pressureBaseline == 1 + PersonalRiskModel.declarationTilt)
-        #expect(pressure.humidity == 1)
+        #expect(pressure.pressureChange == base.pressureChange + PersonalRiskModel.declarationTilt)
+        #expect(pressure.pressureBaseline == base.pressureBaseline + PersonalRiskModel.declarationTilt)
+        #expect(pressure.humidity == base.humidity)
 
         // 複数申告は加算。クランプ範囲 [0, 3] を超えない組み合わせであること。
         let all = PersonalRiskModel.prior(for: Set(DeclaredSensitivity.allCases))
@@ -156,14 +212,14 @@ struct PersonalRiskModelTests {
     }
 
     /// 申告の価値は記録ゼロの初日から通知閾値に効くこと。
-    /// 湿度 3pt は汎用では「やや注意」止まりだが、湿気の申告があれば「注意」へ上がる。
+    /// 湿度 2pt は較正済みでも「やや注意」止まりだが、湿気の申告があれば「注意」へ上がる。
     @Test("申告だけの初日から通知判定が変わる")
     func declarationTakesEffectFromDayZero() {
         let declared = PersonalRiskModel.prior(for: [.humidity])
         #expect(PersonalRiskModel.fitted(to: [], prior: declared) == declared)
 
-        let humid = factors(humidity: 3)
-        #expect(PersonalRiskModel.generic.schedulingLevel(for: humid) == .slight)
+        let humid = factors(humidity: 2)
+        #expect(PersonalRiskModel.calibrated.schedulingLevel(for: humid) == .slight)
         #expect(declared.schedulingLevel(for: humid) == .caution)
     }
 
@@ -179,7 +235,7 @@ struct PersonalRiskModelTests {
                     count: 100)
         let fitted = PersonalRiskModel.fitted(to: observations, prior: declared)
         #expect(fitted.humidity < declared.humidity)
-        #expect(fitted.pressureChange > 1)
+        #expect(fitted.pressureChange > PersonalRiskModel.calibrated.pressureChange)
     }
 
     // MARK: - 頑健性
