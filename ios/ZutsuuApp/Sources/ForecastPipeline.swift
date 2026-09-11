@@ -140,7 +140,7 @@ final class ForecastPipeline {
         case LocationError.denied:
             return "位置情報の利用が許可されていません。設定アプリから許可してください。"
         case LocationError.unavailable:
-            return "現在地を取得できませんでした。"
+            return "現在地を取得できませんでした。下に引くともう一度試せます。"
         default:
             // WeatherKit の内部エラー名（JWT 認証など）はユーザーには意味がない。
             // 原因の切り分けはログで行う。
