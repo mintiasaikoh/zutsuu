@@ -9,15 +9,15 @@ import Foundation
 @Suite("きあぼうの背景")
 struct KiabouSceneryTests {
 
-    @Test("無地と入り江は最初から、10種は5日と10日で解放される")
+    @Test("無地と入り江は最初から、11種は5日と10日で解放される")
     func unlockThresholds() {
         #expect(KiabouScenery.plain.isUnlocked(recordedDays: 0))
         #expect(KiabouScenery.cove.isUnlocked(recordedDays: 0))
         let early = KiabouScenery.all.filter { $0.requiredDays == 5 }
         let late = KiabouScenery.all.filter { $0.requiredDays == 10 }
         #expect(early.count == 5)
-        #expect(late.count == 5)
-        #expect(KiabouScenery.all.count == 12)
+        #expect(late.count == 6)
+        #expect(KiabouScenery.all.count == 13)
         for scenery in early {
             #expect(!scenery.isUnlocked(recordedDays: 4))
             #expect(scenery.isUnlocked(recordedDays: 5))

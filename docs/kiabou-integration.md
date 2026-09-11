@@ -89,14 +89,14 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
   `CheckInRecord` に optional で保存し、「安心 · 1018 hPa · 3時間で1hPa上昇 · 23℃」の形で出す。
   生値のない古い記録は要因名だけ（「高い湿度 · 降水」）。文面は記述のみで評価語を付けない
 
-### 3.3 背景の選択（2026-09-11、ユーザー制作の素材 10 種）
+### 3.3 背景の選択（2026-09-11、ユーザー制作の素材 11 種）
 
 - `KiabouScenery` が背景と解放条件を定義する。無地（0 日）・入り江（0 日、従来の背景）・
-  ユーザー制作の 10 種（assets/kiabou/backgrounds、`catalog.json` の順に 5 種が累計 5 日、5 種が累計 10 日。
+  ユーザー制作の 11 種（assets/kiabou/backgrounds、`catalog.json` の順に 5 種が累計 5 日、6 種が累計 10 日。
   設計値でユーザー判断で変えてよい）。**`id` は AppStorage の保存キー（`kiabou.scene`）なので変更禁止**。
   未知の id は入り江に倒す
 - 素材は PNG 1536×1024（各約 1.9MB）を JPEG 品質 80 に変換して `Resources/scene-{id}.jpg` として同梱
-  （10 枚で約 2MB。PNG のままだと 19MB 増えるため）。同梱漏れはテスト（`KiabouSceneryTests`）で防ぐ
+  （11 枚で約 2.3MB。PNG のままだと 21MB 増えるため）。同梱漏れはテスト（`KiabouSceneryTests`）で防ぐ
 - 薄明かり（`kiabou.native.dim`）は背景に関わらず同じ処理（彩度 0.7・黒 57% 重ね）。快適さの設定は
   解放条件から独立（設計書 §6.7）
 - 従来の `kiabou.native.cove`（入り江オン/オフ）は `kiabou.scene` に置き換えた。未リリースのため移行処理なし
@@ -127,7 +127,7 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 
 - `assets/kiabou/variations/` — 記録日数で解放する着せ替え（設計書 §6.7）。3 外観 × 色/模様 + 小物、検証記録は `verification.txt`
 - `assets/kiabou/personas/` — 衣装ペルソナ 5 種。2026-09-11 に採用し `costume` / `covered` を同梱
-- `assets/kiabou/backgrounds/` — ユーザー制作の背景 10 種（PNG 原画・プロンプト・catalog.json）。
+- `assets/kiabou/backgrounds/` — ユーザー制作の背景 11 種（PNG 原画・プロンプト・catalog.json）。
   2026-09-11 に採用し JPEG 変換して同梱。`kiabou-backgrounds-v1.zip` は展開済み内容と重複するため git 管理外
 - `kiabou-wardrobe-v1.zip` は展開済み内容と重複するため git 管理外
 

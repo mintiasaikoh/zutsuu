@@ -18,7 +18,7 @@ public struct KiabouScenery: Identifiable, Sendable, Equatable, Hashable {
     /// 従来の入り江。最初から選べる。
     public static let cove = KiabouScenery(id: "cove", name: "いりえ", requiredDays: 0, resource: "cove.png")
 
-    /// 表示順 = 解放順。ユーザー制作の 10 種は catalog.json の順に 5 日 / 10 日で解放。
+    /// 表示順 = 解放順。ユーザー制作の 11 種は catalog.json の順に 5 日 / 10 日で解放。
     public static let all: [KiabouScenery] =
         [plain, cove]
         + user.prefix(5).map { user($0, requiredDays: 5) }
@@ -30,6 +30,7 @@ public struct KiabouScenery: Identifiable, Sendable, Equatable, Hashable {
         ("mage-study", "魔法使いの書斎"), ("forest-veranda", "森の縁側"),
         ("snow-window", "雪の日の窓辺"), ("underwater-garden", "浅瀬の水庭"),
         ("quiet-library", "小さな図書室"), ("moon-train", "おやすみ列車"),
+        ("quiet-sea", "きあぼうの海"),
     ]
 
     private static func user(_ entry: (id: String, name: String), requiredDays: Int) -> KiabouScenery {
