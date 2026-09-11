@@ -13,6 +13,8 @@ struct KiabouTabView: View {
     @AppStorage("kiabou.scene") private var sceneID = KiabouScenery.cove.id
     @AppStorage("kiabou.native.dim") private var dim = false
     @AppStorage("kiabou.outfit") private var outfitID = KiabouOutfit.original.id
+    @AppStorage("kiabou.pillow") private var pillowID = KiabouBedding.matchID
+    @AppStorage("kiabou.blanket") private var blanketID = KiabouBedding.matchID
     @Query(sort: \CheckInRecord.date, order: .reverse) private var records: [CheckInRecord]
 
     private var palette: KiabouPalette { KiabouPalette(dim: dim) }
@@ -32,6 +34,7 @@ struct KiabouTabView: View {
                         .frame(height: 260)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                     outfitSection
+                    beddingSection
                     scenerySection
                     appearanceSection
                     logSection
@@ -66,6 +69,38 @@ struct KiabouTabView: View {
     private func outfitCell(_ outfit: KiabouOutfit) -> some View {
         unlockCell(name: outfit.name, requiredDays: outfit.requiredDays,
                    selected: outfit.id == outfitID, selectedLabel: "いまの姿") { outfitID = outfit.id }
+    }
+
+    // MARK: - 寝具
+
+    /// 枕・毛布の色系統。かすみ・しずく・こもれびの姿で休むときだけ効く（kiabou-integration.md §3.2）。
+    private var beddingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("ねどこ").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
+            beddingRow("まくら", selection: $pillowID)
+            beddingRow("もうふ", selection: $blanketID)
+            if KiabouOutfit.outfit(id: outfitID).family == nil {
+                Text("まくらと毛布は、かすみ・しずく・こもれびの姿で休むときに使われます。")
+                    .font(.caption).foregroundStyle(palette.muted)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func beddingRow(_ title: String, selection: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption).foregroundStyle(palette.muted)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], spacing: 8) {
+                ForEach(KiabouBedding.choices) { choice in
+                    unlockCell(name: choice.name, requiredDays: choice.requiredDays,
+                               selected: choice.id == selection.wrappedValue, selectedLabel: "いまの\(title)") {
+                        selection.wrappedValue = choice.id
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - 背景
