@@ -5,6 +5,7 @@
 import SwiftUI
 import SwiftData
 import KiabouUI
+import PersonalRisk
 
 struct KiabouTabView: View {
     @Environment(ForecastPipeline.self) private var pipeline
@@ -37,6 +38,7 @@ struct KiabouTabView: View {
                     beddingSection
                     scenerySection
                     appearanceSection
+                    correlationSection
                     logSection
                 }
                 .padding(16)
@@ -164,6 +166,43 @@ struct KiabouTabView: View {
         .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("見え方")
+    }
+
+    // MARK: - 気圧との関係（設計書 v1.0 の相関レポート、記述のみ）
+
+    private var correlationSection: some View {
+        let report = PressureCorrelationReport.make(
+            observations: records.filter(\.hasFactors).map { record in
+                SymptomObservation(factors: record.factors,
+                                   wasBad: record.feeling == HealthFeelingBadRaw)
+            },
+            recordedDays: recordedDays)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("気圧との関係").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
+            switch report {
+            case .insufficient(let remaining):
+                Text("あと\(remaining)日分の記録で、気圧との関係を見られます。")
+                    .foregroundStyle(palette.muted)
+            case .ready(let summary):
+                Text(Self.describe(summary))
+            }
+        }
+        .font(.subheadline)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// 記述に留める（§6.3）。「気圧に弱い」等の評価語や申告への言及は付けない。
+    static func describe(_ summary: PressureCorrelationReport.Summary) -> String {
+        func line(_ label: String, count: Int, bad: Int, rate: Double?) -> String {
+            guard let rate else { return "\(label)の記録はまだありません。" }
+            return "\(label)の記録 \(count) 件のうち、つらいが \(bad) 件（\(Int((rate * 100).rounded()))%）。"
+        }
+        return line("気圧が動いていたとき", count: summary.activeCount, bad: summary.activeBad,
+                    rate: summary.activeRate)
+            + "\n" + line("気圧が穏やかだったとき", count: summary.calmCount, bad: summary.calmBad,
+                         rate: summary.calmRate)
     }
 
     // MARK: - 記録ログ

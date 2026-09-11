@@ -28,6 +28,19 @@ ios/ZutsuuKit/Tests/PersonalRiskTests/
 
 オンボーディングの体質申告（設計書 §6.5）。`pressure`（気圧の 2 要因を傾ける）/ `rain` / `humidity` / `temperatureSwing`。**rawValue は保存キーなので変更禁止。**
 
+### `PressureCorrelationReport: Sendable, Equatable`（2026-09-12）
+
+設計書 v1.0 の「気圧のみ × 記録の単純な相関レポート」。**記述だけ**を返し、予測・評価の語を持たない（§6.3）。
+
+| メンバ | 内容 |
+|---|---|
+| `static let minimumRecordedDays = 30` | これ未満は `.insufficient(remainingDays:)`。§6.3 の下限を設計値として採用（§11.5 の 5、実データで見直す） |
+| `static func make(observations:recordedDays:)` | 要因付きの観測から作る。気圧が動いた記録（気圧変化 or 絶対気圧の点数 > 0）と穏やかな記録に分け、それぞれの「つらい」の件数と割合を返す |
+| `.insufficient(remainingDays:)` / `.ready(Summary)` | `Summary` は `activeCount` / `activeBad` / `calmCount` / `calmBad`、`activeRate` / `calmRate`（0〜1、件数 0 なら nil） |
+
+文面はアプリ層が作る。「気圧が動いていたときの記録 N 件のうち、つらいが X 件」の形に留め、「気圧に弱い」等の評価語は付けない。体質申告には言及しない（ユーザー決定）。
+広告による期限付き解放（設計書 §8）は Plan 4 の AdMob 実装と同時に入れる。それまでは常時表示。
+
 ### `PersonalRiskModel: Sendable, Equatable`
 
 | メンバ | 内容 |
