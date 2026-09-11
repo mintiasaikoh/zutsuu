@@ -21,7 +21,9 @@ ios/ZutsuuKit/Tests/AppCoreTests/  # 5 ファイル
 | `TemperatureSwingDetector.swift` | 系列から昨日・今日の最高気温を切り出し `TemperatureSwing` を作る |
 | `AlertNotifications.swift` | `ScheduledAlert` → 通知の識別子と文面 |
 | `NotificationReconciler.swift` | 保留中の予約と新しい予定の突き合わせ（温存・取消・追加） |
-| `NeutralClimatology.swift` | Plan 6 までの暫定 `PressureClimatology` |
+| `NeutralClimatology.swift` | テーブルが読めないときの退避用 `PressureClimatology`（常に 0.5） |
+| `ReanalysisClimatology.swift` | 同梱の気圧平年値テーブル（Plan 6、2026-09-12） |
+| `Resources/slp-climatology.bin` | テーブル本体（約 740KB）。`tools/climatology/build_slp_table.py` で生成 |
 
 ## 2. 公開 API
 
@@ -81,9 +83,23 @@ hPa / ℃ / % / mm へ揃える唯一の場所。`riskengine-api.md` §2.1 の�
 
 `ReconcilePlan.cancel` は取消する識別子、`.add` は追加する予定（発火時刻順）。
 
+### `ReanalysisClimatology`（Plan 6、2026-09-12）
+
+NCEP/NCAR Reanalysis 1 の日平均海面気圧 1991〜2020 年から作った、2.5° 格子 × 12 か月の **10・25・40 パーセンタイル値**（hPa × 10 の Int16）。
+選定の経緯は `docs/research/2026-09-12-pressure-climatology.md`。
+
+- `static func bundled() throws -> ReanalysisClimatology` — バンドルから読む。欠損・破損は `ClimatologyTableError`
+- `init(data:) throws` — ヘッダ（`ZSLP`）とサイズ（16 + 12×73×144×3×2 = 756,880 byte）を検証する
+- `percentile(pressure:coordinate:month:)` — 地点は格子 4 点の双一次補間、気圧は境界間の線形補間。
+  **境界ちょうどで 0.10 / 0.25 / 0.40 を返す**（§3.2 の `<` 判定と噛み合う）。境界の外は同じ傾きで外挿し 0〜1 に収める。
+  非有限の気圧は 0.5。月は 1〜12 に巻き戻し、経度は 360° で巻き、緯度は ±90 に収める
+- 時別の値を日平均の分布に当てるため、裾は実際よりやや狭い（「低い」判定が出やすい側）。時別データでの作り直しは v1.1 以降の検討
+
+アプリ層（`ForecastPipeline`）は起動時に一度 `bundled()` を試み、失敗したら `NeutralClimatology` に倒してログに残す。
+
 ### `NeutralClimatology`
 
-常に 0.5 を返す。**これを使う間、絶対気圧スコア（最大 3pt）は恒久的に 0** で、18pt 満点のうち 15pt しか動かない。Plan 6 のテーブル完成時に差し替える。暫定であることを名前で示す。
+常に 0.5 を返す退避用。これを使う間は絶対気圧スコア（最大 3pt）が 0 になる。2026-09-12 までは常用の暫定実装だった。
 
 ## 3. アプリ層（Part B）が守ること
 

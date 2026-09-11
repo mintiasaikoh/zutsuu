@@ -4,3 +4,4 @@ dist/
 .build/
 .swiftpm/
 assets/kiabou/backgrounds/*.zip
+__pycache__/

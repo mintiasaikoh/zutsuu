@@ -176,7 +176,7 @@ ios/ZutsuuKit/
 func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double
 ```
 
-その地点・その月の海面気圧分布における位置を 0.0〜1.0 で返す。0 に近いほど「その土地としては低い」。実装は Plan 6（NOAA 再解析ベースの静的テーブル）。**それまでアプリは `AppCore.NeutralClimatology`（常に 0.5）を使い、絶対気圧スコアは恒久的に 0 になる**（`docs/appcore-api.md`）。
+その地点・その月の海面気圧分布における位置を 0.0〜1.0 で返す。0 に近いほど「その土地としては低い」。実装は `AppCore.ReanalysisClimatology`（NCEP/NCAR 再解析 1991〜2020、2.5° 格子の同梱テーブル。2026-09-12）。テーブルが読めないときだけ `NeutralClimatology`（常に 0.5、絶対気圧スコア 0）へ倒す（`docs/appcore-api.md`）。
 
 戻り値が 0.0〜1.0 の外に出た場合と非有限値は、呼び出し側（`absolutePressureScore`）で吸収される。ただし NaN は debug で `assertionFailure` を起こす。
 

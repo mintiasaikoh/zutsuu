@@ -27,7 +27,7 @@ let package = Package(
         .target(name: "PersonalRisk", dependencies: ["RiskEngine"],
                 swiftSettings: [.treatAllWarnings(as: .error)]),
         .testTarget(name: "PersonalRiskTests", dependencies: ["PersonalRisk", "RiskEngine"]),
-        .target(name: "AppCore", dependencies: ["RiskEngine"],
+        .target(name: "AppCore", dependencies: ["RiskEngine"], resources: [.process("Resources")],
                 swiftSettings: [.treatAllWarnings(as: .error)]),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore", "RiskEngine"])
     ],

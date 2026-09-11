@@ -29,6 +29,13 @@ final class ForecastPipeline {
     private let weather: any WeatherProviding
     private let location: LocationProvider
     private let notifications: NotificationClient
+    /// 同梱の平年値テーブル。読めなければ暫定の `NeutralClimatology`（絶対気圧 0pt）へ倒し、ログに残す。
+    private let climatology: any PressureClimatology = {
+        do { return try ReanalysisClimatology.bundled() } catch {
+            ForecastPipeline.logger.error("平年値テーブルを読めません: \(String(describing: error), privacy: .public)")
+            return NeutralClimatology()
+        }
+    }()
 
     init(store: CheckInStore,
          weather: any WeatherProviding = WeatherKitProvider(),
@@ -66,7 +73,7 @@ final class ForecastPipeline {
             self.coordinate = coordinate
             series = WeatherSeries.hourly(from: samples)
             // 解析のたびに生成する（Calendar を保持するため。riskengine-api.md §6.1）。
-            let analyzer = RiskAnalyzer(climatology: NeutralClimatology(),
+            let analyzer = RiskAnalyzer(climatology: climatology,
                                         coordinate: coordinate, calendar: calendar)
             risks = analyzer.analyze(series)
             swing = TemperatureSwingDetector.detect(in: series, now: now, calendar: calendar)
