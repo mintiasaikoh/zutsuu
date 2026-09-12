@@ -75,7 +75,7 @@ final class KiabouScene {
             drift.addChild(models[key] ?? model)
             if ambient {
                 // 正面から少し引いた固定カメラ。モデルを小さくし、画面を横切る余地を作る。
-                drift.scale = [0.68, 0.68, 0.68]
+                drift.scale = [0.6, 0.6, 0.6]
                 camera.look(at: .zero, from: [0, 0, 0.95], relativeTo: nil)
             } else {
                 camera.look(at: .zero,
@@ -169,8 +169,10 @@ final class KiabouScene {
         let speed = 0.013 * (0.75 + 0.25 * motion.vertical.sample(at: motion.time * 0.17))
         wander.x += cos(heading) * speed * delta
         wander.y += sin(heading) * speed * delta
-        // 縦画面のカメラ視野（半幅 ≈0.13、半高 ≈0.29）より少し内側。端で切れたままにしない。
-        let bounds = SIMD2<Double>(0.10, 0.25)
+        // 縦画面のカメラ視野（半幅 ≈0.13、半高 ≈0.29）から、縮小後のきあぼうの半径（≈0.055）を引いた内側。
+        // 0.10 だと右端で体が切れたまま折り返していた（2026-09-12 実測）。
+        // 揺れ（±0.022 / ±0.032）の分も見込む。
+        let bounds = SIMD2<Double>(0.05, 0.19)
         if abs(wander.x) > bounds.x {
             wander.x = wander.x.clamped(to: -bounds.x...bounds.x)
             heading = .pi - heading
