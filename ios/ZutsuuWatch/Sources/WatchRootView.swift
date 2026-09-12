@@ -9,6 +9,7 @@ import RiskEngine
 
 struct WatchRootView: View {
     @Environment(WatchSession.self) private var session
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
@@ -21,13 +22,20 @@ struct WatchRootView: View {
                         .accessibilityLabel(String(localized: "いまの調子は\(feeling.label)。記録する"))
                 }
                 if let recorded = session.lastRecorded {
-                    Text("「\(recorded.label)」を iPhone に送ったよ。")
-                        .font(.caption2).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    if session.unacknowledged.isEmpty {
+                        Text("「\(recorded.label)」を iPhone に保存したよ。")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("「\(recorded.label)」を iPhone へ送っています…（未保存 \(session.unacknowledged.count) 件）")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
             }
             .padding(.horizontal, 4)
         }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { session.flush() } }
     }
 
     @ViewBuilder

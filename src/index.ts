@@ -83,16 +83,32 @@ function validateConfig(): void {
   if (longitude < -180 || longitude > 180) throw new AppError("経度が無効", "INVALID_LONGITUDE");
 }
 
+
+// Open-Meteo は timezone=Asia/Tokyo でオフセット無しのローカル時刻文字列を返す。
+// 実行環境の TZ に依存せず JST として解釈する（レビュー R04）。
+const API_TIME_ZONE_OFFSET = "+09:00";
+function parseApiTime(t: string | number): Date {
+  if (typeof t === "number") return new Date(t * 1000);
+  return /[Zz]|[+-]\d\d:\d\d$/.test(t) ? new Date(t) : new Date(`${t}${API_TIME_ZONE_OFFSET}`);
+}
+// 表示用の「時」も JST で取り出す（getHours は実行環境の TZ に依存する）。
+function hourJST(d: Date): number {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", hour: "numeric", hour12: false }).format(d)) % 24;
+}
+function minuteJST(d: Date): number {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", minute: "numeric" }).format(d));
+}
+
 function isQuietHours(): boolean {
   const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
+  const hour = hourJST(now) + minuteJST(now) / 60;
   const { start, end } = CONFIG.quietHours;
   return start > end ? hour >= start || hour < end : hour >= start && hour < end;
 }
 
 function isMorningBriefingTime(): boolean {
   const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
+  const hour = hourJST(now) + minuteJST(now) / 60;
   return hour >= CONFIG.morningBriefing.start && hour < CONFIG.morningBriefing.end;
 }
 
@@ -196,7 +212,9 @@ async function fetchJmaPops(): Promise<Map<number, number>> {
     const res = await fetchWithRetry(url);
     const data = await res.json();
 
-    const timeSeries = data?.[0]?.timeSeries?.[0];
+    // 降水確率を持つ系列は先頭とは限らない（2026-09-12 時点の東京は [1]）。配列位置を固定しない。
+    const seriesList: any[] = data?.[0]?.timeSeries ?? [];
+    const timeSeries = seriesList.find(ts => Array.isArray(ts?.areas?.[0]?.pops));
     if (!timeSeries) return result;
 
     const timeDefines: string[] = timeSeries.timeDefines;
@@ -208,7 +226,10 @@ async function fetchJmaPops(): Promise<Map<number, number>> {
       const blockEnd = i + 1 < timeDefines.length
         ? new Date(timeDefines[i + 1]).getTime()
         : blockStart + 6 * 60 * 60 * 1000;
-      const prob = pops[i] === "--" ? 0 : Number(pops[i]);
+      // 欠測（"--"）は 0% に変換せず、元の予報（Open-Meteo）を残す。
+      if (pops[i] === "--" || pops[i] === undefined) continue;
+      const prob = Number(pops[i]);
+      if (!Number.isFinite(prob)) continue;
 
       for (let t = blockStart; t < blockEnd; t += 60 * 60 * 1000) {
         result.set(t, prob);
@@ -224,7 +245,9 @@ async function fetchJmaPops(): Promise<Map<number, number>> {
 
 function analyzeRisk(hourly: WeatherHourly, jmaPopsMap: Map<number, number>): HourRisk[] {
   const now = new Date();
-  const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+  // 「現在」は now を含む時間帯（開始 <= now < 開始 + 1h）。次の時間帯を現在と扱うと、
+  // 直近の上昇を「既に注意」と誤判定して見逃す（レビュー R04）。
+  const startIdx = hourly.time.findIndex(t => parseApiTime(t).getTime() + 60 * 60 * 1000 > now.getTime());
   if (startIdx === -1) return [];
 
   const p = hourly.pressure_msl;
@@ -241,7 +264,7 @@ function analyzeRisk(hourly: WeatherHourly, jmaPopsMap: Map<number, number>): Ho
     const change6h = i + 6 < n ? p[i + 6] - p[i] : change1h * 6;
     const tempChange3h = i + 3 < n ? t[i + 3] - t[i] : 0;
     const humidity = h[i] ?? 0;
-    const timeMs = new Date(hourly.time[i]).getTime();
+    const timeMs = parseApiTime(hourly.time[i]).getTime();
     const precipProb = jmaPopsMap.has(timeMs) ? jmaPopsMap.get(timeMs)! : (pp[i] ?? 0);
     const precip = pr[i] ?? 0;
 
@@ -251,7 +274,7 @@ function analyzeRisk(hourly: WeatherHourly, jmaPopsMap: Map<number, number>): Ho
     );
 
     risks.push({
-      time: new Date(hourly.time[i]),
+      time: parseApiTime(hourly.time[i]),
       pressure: p[i],
       temperature: t[i],
       humidity,
@@ -271,7 +294,10 @@ function analyzeRisk(hourly: WeatherHourly, jmaPopsMap: Map<number, number>): Ho
 // 前日比の気温差を検出（頭痛ーるにはない差別化機能）
 function detectTemperatureSwing(hourly: WeatherHourly): TemperatureSwing {
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 「今日」の境界も JST で切る（実行環境の TZ に依存しない）。
+  const ymd = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric" })
+    .formatToParts(now).reduce<Record<string, number>>((acc, p) => { if (p.type !== "literal") acc[p.type] = Number(p.value); return acc; }, {});
+  const todayStart = new Date(Date.UTC(ymd.year, ymd.month - 1, ymd.day) - 9 * 60 * 60 * 1000);
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
   const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
 
@@ -279,7 +305,7 @@ function detectTemperatureSwing(hourly: WeatherHourly): TemperatureSwing {
   const yesterdayTemps: number[] = [];
 
   for (let i = 0; i < hourly.time.length; i++) {
-    const t = new Date(hourly.time[i]);
+    const t = parseApiTime(hourly.time[i]);
     if (t >= todayStart && t < todayEnd) todayTemps.push(hourly.temperature_2m[i]);
     else if (t >= yesterdayStart && t < todayStart) yesterdayTemps.push(hourly.temperature_2m[i]);
   }
@@ -336,14 +362,14 @@ function buildRainForecast(risks: HourRisk[]): string {
   let prev = rainHours[0];
   for (let i = 1; i < rainHours.length; i++) {
     const curr = rainHours[i];
-    const gap = curr.time.getHours() - prev.time.getHours();
+    const gap = hourJST(curr.time) - hourJST(prev.time);
     if (gap > 1) {
-      ranges.push(`${rangeStart.time.getHours()}〜${prev.time.getHours() + 1}時`);
+      ranges.push(`${hourJST(rangeStart.time)}〜${hourJST(prev.time) + 1}時`);
       rangeStart = curr;
     }
     prev = curr;
   }
-  ranges.push(`${rangeStart.time.getHours()}〜${prev.time.getHours() + 1}時`);
+  ranges.push(`${hourJST(rangeStart.time)}〜${hourJST(prev.time) + 1}時`);
 
   return `🌧️ 雨の可能性あり（最大${Math.round(maxProb)}%）\n☂️ ${ranges.join("、")}頃`;
 }
@@ -361,7 +387,7 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
   for (let i = 0; i < Math.min(dayRisks.length, 12); i += 3) {
     const block = risks[i];
     if (!block) break;
-    const startHour = block.time.getHours();
+    const startHour = hourJST(block.time);
     const endHour = (startHour + 3) % 24;
     const blockMax = Math.max(...risks.slice(i, i + 3).map(r => r.riskLevel)) as RiskLevel;
     const bi = RISK[blockMax];
@@ -370,7 +396,7 @@ function formatMorningBriefing(risks: HourRisk[], swing: TemperatureSwing): stri
   }
 
   const peak = dayRisks.reduce((a, b) => a.riskLevel >= b.riskLevel ? a : b);
-  const peakHour = peak.time.getHours();
+  const peakHour = hourJST(peak.time);
 
   let mainAdvice: string;
   if (maxRisk >= 4) {
@@ -412,7 +438,7 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: Temperat
 
   const window = risks.slice(Math.max(0, alertIdx - 1), alertIdx + 5);
   const trendLines = window.map(r => {
-    const h = String(r.time.getHours()).padStart(2);
+    const h = String(hourJST(r.time)).padStart(2);
     const pr = r.pressure.toFixed(0).padStart(6);
     return `${h}時 ${pr}hPa ${trendArrow(r.change1h)}`;
   });
@@ -422,7 +448,7 @@ function formatAlertMessage(risks: HourRisk[], alertIdx: number, swing: Temperat
   const totalChange = endPressure - currentPressure;
   const changeStr = totalChange >= 0 ? `+${totalChange.toFixed(0)}` : totalChange.toFixed(0);
   const direction = totalChange < -0.5 ? "急降下📉" : totalChange > 0.5 ? "急上昇📈" : "変動📊";
-  const alertHour = alert.time.getHours();
+  const alertHour = hourJST(alert.time);
 
   // リスク要因内訳
   const { pressureScore, precipScore, tempScore } = alert.riskFactors;
@@ -453,7 +479,7 @@ ${adviceSection}`;
 // QuickChart.ioで気圧グラフ画像のURLを生成（リスクレベルを背景色で表示）
 async function generateChartUrl(risks: HourRisk[]): Promise<string | null> {
   const hours = risks.slice(0, 12);
-  const labels = hours.map(r => `${r.time.getHours()}時`);
+  const labels = hours.map(r => `${hourJST(r.time)}時`);
   const pressures = hours.map(r => Math.round(r.pressure));
 
   const riskBgColor: Record<RiskLevel, string> = {
@@ -649,7 +675,9 @@ async function shouldSendRainAlert(risks: HourRisk[]): Promise<RainAlertResult |
     fetchNowcastPrecip(60),
   ]);
 
-  if (futureIntensity !== -1) {
+  // 現在値・将来値の両方が取れたときだけナウキャストで判定する。片側の取得失敗（-1）を
+  // 「雨が降っていない」と読むと誤った開始通知になる（レビュー R19）。
+  if (futureIntensity !== -1 && nowIntensity !== -1) {
     if (futureIntensity >= NOWCAST_RAIN_THRESHOLD && nowIntensity < NOWCAST_RAIN_THRESHOLD) {
       log("info", "雨アラート条件成立（ナウキャスト）", { nowIntensity, futureIntensity });
       return { alertIdx: 1, nowcastIntensity: futureIntensity };
@@ -674,13 +702,13 @@ async function shouldSendRainAlert(risks: HourRisk[]): Promise<RainAlertResult |
 }
 
 function formatRainAlertMessage(risks: HourRisk[], nowcastIntensity?: number): string {
-  const alertHour = risks[1].time.getHours();
+  const alertHour = hourJST(risks[1].time);
   const prob = Math.round(risks[1].precipProb);
 
   // 雨が続く時間帯を算出
   const rainHours = risks.slice(1).filter(r => r.precipProb >= RAIN_ALERT_THRESHOLD);
   const endHour = rainHours.length > 0
-    ? rainHours[rainHours.length - 1].time.getHours() + 1
+    ? hourJST(rainHours[rainHours.length - 1].time) + 1
     : alertHour + 1;
 
   const change3h = risks[1].change3h.toFixed(1);

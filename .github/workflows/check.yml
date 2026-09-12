@@ -1,8 +1,9 @@
 name: 気圧チェック（アラート）
 
 on:
-  push:
-    branches: [master]
+  # push では動かさない: 朝の時間帯に push すると朝予報が二重に送られる（レビュー R18）。
+  # 朝予報（8:30〜10:00 JST の実行で isMorningBriefingTime が真）もこの毎時実行が 1 本で担う。
+  # 以前は morning.yml が 00:00 UTC にも送っていて二重になっていた（レビュー R18）。
   schedule:
     - cron: "0 * * * *"  # 毎時0分（UTC）→ JST 毎時09分頃
   workflow_dispatch:

@@ -85,6 +85,11 @@ iOS 26.3 シミュレータのスイッチ（Toggle）は短いタップを取�
 | LINE_CHANNEL_TOKEN | LINE Messaging APIのチャネルアクセストークン（長期） |
 | LINE_USER_ID | 通知先のユーザーID（Uから始まる） |
 
+## LINE 版の実行時刻
+
+`src/index.ts` は Open-Meteo の時刻を JST として解釈し、表示の「時」も JST で取り出す（実行環境の TZ に依存しない）。
+朝予報は毎時の `check.yml` が 08:30〜10:00 JST の実行で 1 回だけ送る（`morning.yml` は二重送信のため廃止）。
+
 ## GitHub Secrets
 
 - `LINE_CHANNEL_TOKEN`

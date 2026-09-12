@@ -9,6 +9,10 @@
   iPhone 側に配達されず（要約の逆方向 `updateApplicationContext` は届く）、即時経路がないと動作確認ができない。
   両方届いても iPhone 側は同じ `id` を重複保存しない
 - 決定 2・3 は計画どおり。決定 4（通知アクション）は付けていない
+- **保存の確認（2026-09-12、レビュー R03）**: Watch は記録を「未確認」の列（UserDefaults、上限 50 件）に入れて送り、
+  iPhone が**保存に成功したときだけ** `saved: true`（sendMessage の返信）または `ack`（transferUserInfo 経由）を返す。
+  Watch は返答があった id を列から消し、起動・到達可能になったとき・記録直後に列を送り直す。画面は
+  「保存したよ」と「送っています…（未保存 N 件）」を区別する。iPhone 側は同じ id を重複保存しない
 - ターゲット: `ZutsuuWatch`（単一ターゲット watch アプリ、`com.mintiasaikoh.zutsuu.watchkitapp`）と
   `ZutsuuWatchWidget`（WidgetKit、`.complication`）。App Group `group.com.mintiasaikoh.zutsuu` で要約を共有
 - 検証（ペアリングした iPhone 17 Pro + Apple Watch Series 11 シミュレータ）: iPhone の予報更新 → Watch に「いま 注意」が出る →

@@ -12,6 +12,8 @@ import AppCore
 final class WatchSessionBridge: NSObject {
     nonisolated static let contextKey = "context"
     nonisolated static let checkInKey = "checkIn"
+    nonisolated static let ackKey = "ack"
+    nonisolated static let savedKey = "saved"
 
     private let pipeline: ForecastPipeline
     private let logger = Logger(subsystem: "com.mintiasaikoh.zutsuu", category: "watch")
@@ -36,16 +38,28 @@ final class WatchSessionBridge: NSObject {
         }
     }
 
-    private func receive(_ data: Data) {
-        Task { @MainActor in
-            do {
-                let checkIn = try WatchCheckIn.decode(data)
-                try await pipeline.record(fromWatch: checkIn)
-                // 体調と記録 ID は健康情報なので公開ログに出さない（レビュー R22）。保存できた事実だけ残す。
-                logger.notice("Watch の記録を保存した")
-            } catch {
-                logger.error("Watch の記録を保存できません: \(String(describing: error), privacy: .public)")
-            }
+    /// 保存して成否を返す。成功したら Watch へ ack を送る（sendMessage の返信が無い経路用）。
+    private func receiveAndSave(_ data: Data) async -> Bool {
+        do {
+            let checkIn = try WatchCheckIn.decode(data)
+            try await pipeline.record(fromWatch: checkIn)
+            // 体調と記録 ID は健康情報なので公開ログに出さない（レビュー R22）。保存できた事実だけ残す。
+            logger.notice("Watch の記録を保存した")
+            return true
+        } catch {
+            logger.error("Watch の記録を保存できません: \(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
+    private func acknowledge(_ data: Data) {
+        guard let checkIn = try? WatchCheckIn.decode(data) else { return }
+        let payload = [Self.ackKey: checkIn.id.uuidString]
+        let session = WCSession.default
+        if session.isReachable {
+            session.sendMessage(payload, replyHandler: nil) { _ in session.transferUserInfo(payload) }
+        } else {
+            session.transferUserInfo(payload)
         }
     }
 }
@@ -64,6 +78,21 @@ extension WatchSessionBridge: WCSessionDelegate {
         session.activate()
     }
 
+    /// sendMessage（返信あり）: 保存してから `saved` を返す。Watch はこの返信で未確認を消す（レビュー R03）。
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any],
+                             replyHandler: @escaping ([String: Any]) -> Void) {
+        guard let data = message[Self.checkInKey] as? Data else {
+            replyHandler([Self.savedKey: false])
+            return
+        }
+        // WatchConnectivity の返信クロージャは Sendable でない。MainActor へ運ぶために箱に入れる。
+        let reply = ReplyBox(replyHandler)
+        Task { @MainActor in
+            let saved = await receiveAndSave(data)
+            reply.handler([Self.savedKey: saved])
+        }
+    }
+
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         handle(message)
     }
@@ -72,7 +101,7 @@ extension WatchSessionBridge: WCSessionDelegate {
         handle(userInfo)
     }
 
-    /// sendMessage と transferUserInfo の両方を同じ経路で受ける。
+    /// 返信経路のない受信。保存できたら ack を送り返す。
     private nonisolated func handle(_ userInfo: [String: Any]) {
         // Data だけを取り出して渡す（辞書は Sendable でない）。
         guard let data = userInfo[Self.checkInKey] as? Data else {
@@ -80,6 +109,15 @@ extension WatchSessionBridge: WCSessionDelegate {
                 .error("Watch からの userInfo に記録が入っていない: \(userInfo.keys.joined(separator: ","), privacy: .public)")
             return
         }
-        Task { @MainActor in receive(data) }
+        Task { @MainActor in
+            if await receiveAndSave(data) { acknowledge(data) }
+        }
     }
+}
+
+/// `sendMessage` の返信クロージャを actor 境界越しに運ぶための箱。WatchConnectivity が
+/// 別スレッドで呼ぶクロージャを MainActor 上の保存完了後に一度だけ呼ぶ用途に限る。
+private final class ReplyBox: @unchecked Sendable {
+    let handler: ([String: Any]) -> Void
+    init(_ handler: @escaping ([String: Any]) -> Void) { self.handler = handler }
 }

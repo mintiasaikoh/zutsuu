@@ -27,6 +27,10 @@ final class WatchSession: NSObject {
     private(set) var context: WatchContext? = WatchShared.loadContext()
     private(set) var lastRecorded: HealthFeeling?
     private(set) var isReachableToPhone = false
+    /// iPhone が「保存した」と応答していない記録。再送の対象（レビュー R03）。
+    private(set) var unacknowledged: [WatchCheckIn] = WatchSession.loadQueue()
+    private static let queueKey = "watch.unacknowledged"
+    private static let queueLimit = 50
 
     override init() {
         super.init()
@@ -38,22 +42,48 @@ final class WatchSession: NSObject {
     /// 現在時刻のレベル。要約が無い・古い場合は nil。
     var currentLevel: RiskLevel? { context?.level(at: Date()) }
 
-    /// 記録は iPhone に届いてから保存される。ここでは送るだけで、完了表示も「送ったよ」に留める。
-    /// iPhone が届く範囲なら即時の sendMessage、届かなければ到達保証のある transferUserInfo。
-    /// 両方届いても iPhone 側は同じ id を重複保存しない（kiabou-integration.md §2.2）。
+    /// 記録は iPhone が**保存した**と応答するまで「未確認」として持ち続け、再送する（レビュー R03）。
+    /// 届く範囲なら sendMessage の返信で確認し、届かなければ transferUserInfo で送って
+    /// iPhone からの ack（`ack` キー）を待つ。両方届いても iPhone 側は同じ id を重複保存しない。
     func record(_ feeling: HealthFeeling) {
         let checkIn = WatchCheckIn(id: UUID(), date: Date(), feeling: feeling.rawValue)
-        guard let data = try? checkIn.encoded() else { return }
-        let payload = [WatchSessionBridgeKeys.checkInKey: data]
+        unacknowledged.append(checkIn)
+        if unacknowledged.count > Self.queueLimit { unacknowledged.removeFirst() }
+        Self.saveQueue(unacknowledged)
+        lastRecorded = feeling
+        flush()
+    }
+
+    /// 未確認の記録を全部送り直す。起動・到達可能になったとき・記録直後に呼ぶ。
+    func flush() {
         let session = WCSession.default
-        if session.isReachable {
-            session.sendMessage(payload, replyHandler: nil) { _ in
+        guard session.activationState == .activated else { return }
+        for checkIn in unacknowledged {
+            guard let data = try? checkIn.encoded() else { continue }
+            let payload = [WatchSessionBridgeKeys.checkInKey: data]
+            if session.isReachable {
+                session.sendMessage(payload, replyHandler: { [weak self] reply in
+                    guard reply[WatchSessionBridgeKeys.savedKey] as? Bool == true else { return }
+                    Task { @MainActor in self?.acknowledge(checkIn.id) }
+                }, errorHandler: { _ in session.transferUserInfo(payload) })
+            } else {
                 session.transferUserInfo(payload)
             }
-        } else {
-            session.transferUserInfo(payload)
         }
-        lastRecorded = feeling
+    }
+
+    private func acknowledge(_ id: UUID) {
+        unacknowledged.removeAll { $0.id == id }
+        Self.saveQueue(unacknowledged)
+    }
+
+    private static func loadQueue() -> [WatchCheckIn] {
+        guard let data = UserDefaults.standard.data(forKey: queueKey) else { return [] }
+        return (try? JSONDecoder().decode([WatchCheckIn].self, from: data)) ?? []
+    }
+
+    private static func saveQueue(_ queue: [WatchCheckIn]) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(queue), forKey: queueKey)
     }
 
     private func store(_ data: Data) {
@@ -68,6 +98,10 @@ final class WatchSession: NSObject {
 enum WatchSessionBridgeKeys {
     static let contextKey = "context"
     static let checkInKey = "checkIn"
+    /// iPhone → Watch: 保存できた記録の id（UUID 文字列）。
+    static let ackKey = "ack"
+    /// sendMessage の返信: 保存できたか。
+    static let savedKey = "saved"
 }
 
 extension WatchSession: WCSessionDelegate {
@@ -79,7 +113,19 @@ extension WatchSession: WCSessionDelegate {
         Task { @MainActor in
             isReachableToPhone = reachable
             if let data { store(data) }
+            flush()
         }
+    }
+
+    /// iPhone が transferUserInfo で届いた記録を保存したときの ack。
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let raw = userInfo[WatchSessionBridgeKeys.ackKey] as? String, let id = UUID(uuidString: raw) else { return }
+        Task { @MainActor in acknowledge(id) }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let raw = message[WatchSessionBridgeKeys.ackKey] as? String, let id = UUID(uuidString: raw) else { return }
+        Task { @MainActor in acknowledge(id) }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
@@ -89,6 +135,9 @@ extension WatchSession: WCSessionDelegate {
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         let reachable = session.isReachable
-        Task { @MainActor in isReachableToPhone = reachable }
+        Task { @MainActor in
+            isReachableToPhone = reachable
+            if reachable { flush() }
+        }
     }
 }
