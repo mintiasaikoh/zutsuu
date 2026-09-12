@@ -29,30 +29,40 @@
         }
       }
     },
-    "「%@」を iPhone に送ったよ。": {
+    "「%@」を iPhone に保存したよ。": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "„%@“ an dein iPhone gesendet."
+            "value": "„%@“ auf dem iPhone gespeichert."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sent “%@” to your iPhone."
+            "value": "Saved “%@” on your iPhone."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "“%@”을(를) iPhone으로 보냈어요."
+            "value": "“%@”을(를) iPhone에 저장했어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已把“%@”发送到 iPhone。"
+            "value": "已在 iPhone 上保存“%@”。"
+          }
+        }
+      }
+    },
+    "「%@」を iPhone へ送っています…（未保存 %lld 件）": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "「%1$@」を iPhone へ送っています…（未保存 %2$lld 件）"
           }
         }
       }

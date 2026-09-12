@@ -95,7 +95,7 @@ public enum AlertNotifications {
         if factors.temperature > 0 {
             parts.append(String(localized: "気温の急な変化", bundle: .module))
         }
-        return parts.joined(separator: "、")
+        return parts.joined(separator: String(localized: "、", bundle: .module))
     }
 
     /// 3 つの窓のうち変化量が最も大きいものを「N時間で MhPa 低下/上昇」にする。

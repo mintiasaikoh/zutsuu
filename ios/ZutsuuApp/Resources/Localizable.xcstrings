@@ -290,34 +290,6 @@
     "doi:%@": {
       "shouldTranslate": false
     },
-    "、": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", "
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", "
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", "
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "、"
-          }
-        }
-      }
-    },
     "あと%lld日": {
       "localizations": {
         "de": {
@@ -2302,6 +2274,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "通知"
+          }
+        }
+      }
+    },
+    "通知が許可されていないため、お知らせは届きません。設定アプリから許可できます。": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benachrichtigungen sind nicht erlaubt, daher kommen keine Hinweise an. Du kannst sie in der Einstellungen-App erlauben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications are not allowed, so alerts won’t arrive. You can allow them in the Settings app."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림이 허용되지 않아 알림이 도착하지 않아요. 설정 앱에서 허용할 수 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未允许通知，因此不会收到提醒。可在“设置”应用中允许。"
           }
         }
       }
