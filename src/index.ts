@@ -11,6 +11,9 @@ const CONFIG = {
   morningBriefing: { start: 8.5, end: 10.0 }, // 08:30〜10:00 JST（MORNING_MODEが優先）
   retryCount: 3,
   retryDelay: 2000,
+  requestTimeoutMs: 15_000,
+  // 気象庁の予報区（降水確率の上書き）。既定は東京地方。地点を変えたら合わせること。
+  jmaAreaCode: process.env.JMA_AREA_CODE || "130000",
 };
 
 type RiskLevel = 1 | 2 | 3 | 4;
@@ -116,7 +119,8 @@ async function fetchWithRetry(url: string): Promise<Response> {
   let lastError: Error = new Error("Unknown");
   for (let i = 0; i < CONFIG.retryCount; i++) {
     try {
-      const res = await fetch(url);
+      // 応答が無いまま実行が止まらないよう、1 回の要求に上限を置く（レビュー: HTTP タイムアウト）。
+      const res = await fetch(url, { signal: AbortSignal.timeout(CONFIG.requestTimeoutMs) });
       if (res.ok) return res;
       const body = await res.text();
       lastError = new AppError(`API ${res.status}`, "API_ERROR", body);
@@ -208,7 +212,7 @@ function computeCompositeRisk(
 async function fetchJmaPops(): Promise<Map<number, number>> {
   const result = new Map<number, number>();
   try {
-    const url = "https://www.jma.go.jp/bosai/forecast/data/forecast/130000.json";
+    const url = `https://www.jma.go.jp/bosai/forecast/data/forecast/${CONFIG.jmaAreaCode}.json`;
     const res = await fetchWithRetry(url);
     const data = await res.json();
 
@@ -362,7 +366,8 @@ function buildRainForecast(risks: HourRisk[]): string {
   let prev = rainHours[0];
   for (let i = 1; i < rainHours.length; i++) {
     const curr = rainHours[i];
-    const gap = hourJST(curr.time) - hourJST(prev.time);
+    // 日付をまたぐと「時」の差が負になるので、実時間で切れ目を見る（22 時と翌 2 時を結合しない）。
+    const gap = (curr.time.getTime() - prev.time.getTime()) / (60 * 60 * 1000);
     if (gap > 1) {
       ranges.push(`${hourJST(rangeStart.time)}〜${hourJST(prev.time) + 1}時`);
       rangeStart = curr;
@@ -631,7 +636,12 @@ async function fetchNowcastPrecip(minutesAhead: number): Promise<number> {
     }
     log("info", "ナウキャスト対象時刻選択", { basetime: best.basetime, validtime: best.validtime, minutesAhead });
 
-    const z = 8, x = 227, y = 100;
+    // タイル番号を CONFIG の緯度経度から求める（東京固定だった。レビュー: LINE 版の地点固定）。
+    const z = 8;
+    const tileN = Math.pow(2, z);
+    const x = Math.floor(tileN * (CONFIG.longitude + 180) / 360);
+    const latRadForTile = CONFIG.latitude * Math.PI / 180;
+    const y = Math.floor(tileN / 2 * (1 - Math.log(Math.tan(latRadForTile) + 1 / Math.cos(latRadForTile)) / Math.PI));
     const tileUrl = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${best.basetime}/none/${best.validtime}/surf/hrpns/${z}/${x}/${y}.png`;
     const tileRes = await fetchWithRetry(tileUrl);
     const arrayBuf = await tileRes.arrayBuffer();

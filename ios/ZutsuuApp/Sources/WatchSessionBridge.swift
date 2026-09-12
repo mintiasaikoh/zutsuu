@@ -17,6 +17,8 @@ final class WatchSessionBridge: NSObject {
 
     private let pipeline: ForecastPipeline
     private let logger = Logger(subsystem: "com.mintiasaikoh.zutsuu", category: "watch")
+    /// 直近に送った要約。有効化後に送信だけ失敗していた場合の再送に使う（レビュー: Watch 有効化後の再送）。
+    private var lastContext: WatchContext?
 
     init(pipeline: ForecastPipeline) {
         self.pipeline = pipeline
@@ -29,6 +31,7 @@ final class WatchSessionBridge: NSObject {
     }
 
     private func send(_ context: WatchContext) {
+        lastContext = context
         let session = WCSession.default
         guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled else { return }
         do {
@@ -67,8 +70,10 @@ final class WatchSessionBridge: NSObject {
 extension WatchSessionBridge: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                              error: (any Error)?) {
-        // 有効化後に最新の要約を送り直す。Watch アプリの再インストール直後などに空のままにしない。
-        Task { @MainActor in await pipeline.refreshIfStale() }
+        // 有効化後に最新の要約を送り直す。手元にあればそれを、無ければ予報を取り直して送る。
+        Task { @MainActor in
+            if let cached = lastContext { send(cached) } else { await pipeline.refreshIfStale() }
+        }
     }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}

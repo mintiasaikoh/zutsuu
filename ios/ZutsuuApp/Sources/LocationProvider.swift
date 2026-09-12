@@ -11,7 +11,12 @@ enum LocationError: Error {
     case unavailable
 }
 
-struct LocationProvider: Sendable {
+/// 位置の取得口。テストでは差し替える。
+protocol LocationProviding: Sendable {
+    @MainActor func current() async throws -> Coordinate
+}
+
+struct LocationProvider: LocationProviding, Sendable {
     /// 位置が得られないまま待つ上限。超えたら `LocationError.unavailable`。
     var timeout: Duration = .seconds(10)
 

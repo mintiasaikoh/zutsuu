@@ -37,6 +37,11 @@ jobs:
       - name: Test (release)
         run: swift test -c release
 
+      # LINE 版（TypeScript）の型検査。実行はしない（通知を送りうるため）。
+      - name: Type-check LINE script
+        working-directory: .
+        run: npm install --no-audit --no-fund && ./node_modules/.bin/tsc --noEmit
+
       # 広告パッケージ（ZutsuuAds）。頻度制御の純粋ロジック（AdPolicy）だけ macOS でテストできる。
       # Google Mobile Ads SDK は iOS 条件付き依存なので、ここでは解決されるだけで結びつかない。
       - name: Test ads policy
@@ -65,3 +70,14 @@ jobs:
           xcodegen generate
           xcodebuild build -project ZutsuuApp.xcodeproj -scheme ZutsuuApp \
             -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
+
+      # アプリ層の結合テスト（予報 → 通知予約 → 記録 → 再予約、保存、広告の方針）。
+      # 実機の WeatherKit・通知センター・広告 SDK は差し替えて回す。シミュレータは実行時に選ぶ。
+      - name: Test app (iOS Simulator)
+        working-directory: ios/ZutsuuApp
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -oE "iPhone [^(]+" | sed 's/ *$//')
+          echo "simulator: $DEVICE"
+          xcodebuild test -project ZutsuuApp.xcodeproj -scheme ZutsuuApp \
+            -destination "platform=iOS Simulator,name=$DEVICE" -only-testing:ZutsuuAppTests \
+            CODE_SIGNING_ALLOWED=NO

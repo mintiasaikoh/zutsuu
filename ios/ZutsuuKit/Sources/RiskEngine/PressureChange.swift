@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/PressureChange.swift
+// 1 時間・3 時間・6 時間の気圧変化量の点数化。
+// 気圧の「変化」を絶対値より重く扱う配点（§3.1）を 1 箇所に置くため。
+// 関連: PressureChanges.swift, CompositeRisk.swift, docs/riskengine-api.md §3.1
 /// index から hoursAhead 時間先との気圧差。
 /// 系列が 1 時間刻みであることを前提とする。
 ///

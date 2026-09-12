@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/Scoring.swift
+// 要因ごとの点数化関数（絶対気圧・湿度・降水・気温変動）。
+// 閾値の境界（>= と <）を仕様どおりに 1 箇所で守るため。
+// 関連: CompositeRisk.swift, PressureChange.swift, docs/riskengine-api.md §3
 /// 気圧の変化量スコア（最大 8pt）。
 /// 変化量は標高・気候帯によらず同じ意味を持つため、固定閾値のままでよい。
 /// 上昇・下降のどちらでも症状が出るため絶対値で評価する。

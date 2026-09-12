@@ -14,17 +14,19 @@ struct WeatherAttribution: Sendable {
     let markURL: URL
 }
 
+/// 予報の取得口。時刻昇順・重複なし・有限値の `WeatherPoint` 列を返す。テストでは差し替える。
 protocol WeatherProviding: Sendable {
-    func hourly(at coordinate: Coordinate, from start: Date, to end: Date) async throws -> [HourWeather]
+    func hourly(at coordinate: Coordinate, from start: Date, to end: Date) async throws -> [WeatherPoint]
     func attribution() async throws -> WeatherAttribution
 }
 
 struct WeatherKitProvider: WeatherProviding {
-    func hourly(at coordinate: Coordinate, from start: Date, to end: Date) async throws -> [HourWeather] {
+    /// `WeatherPoint` は必ず `HourlyWeatherSample` 経由で作る（appcore-api.md §3.1）。換算はここだけ。
+    func hourly(at coordinate: Coordinate, from start: Date, to end: Date) async throws -> [WeatherPoint] {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         let forecast = try await WeatherService.shared.weather(
             for: location, including: .hourly(startDate: start, endDate: end))
-        return forecast.forecast
+        return WeatherSeries.hourly(from: forecast.forecast)
     }
 
     func attribution() async throws -> WeatherAttribution {

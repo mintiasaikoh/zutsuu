@@ -139,7 +139,9 @@ NCEP/NCAR Reanalysis 1 の日平均海面気圧 1991〜2020 年から作った�
 2. 通知の `identifier` は `AlertNotifications.identifier(for:)` で作り、`kind` と `targetDate` を `userInfo` に入れて `PendingAlert` に復元できるようにする
 3. 再スケジュールは必ず `NotificationReconciler` を通す。`removeAllPendingNotificationRequests()` を呼ばない。
    追加・取消した結果は台帳（`NotificationLedger`）に反映して保存する。追加に失敗した識別子は台帳に載せない
-3a. 「次の通知」の表示は予約処理の**後**に実際の保留一覧から作る（レビュー R08）。権限拒否・追加失敗のときは表示しない
+3a. 「次の通知」の表示は予約処理の**後**に実際の保留一覧から作る（レビュー R08）。権限拒否・追加失敗のときは表示せず、それぞれの状態をホームで伝える
+3b. 再予約は 1 本ずつ順に走らせる（`record` と `refresh` が交差しても、古い結果が新しい予約を上書きしない）。位置が取れないときは直近の座標に倒す。
+   現在を含まない・空の系列は成功として公開しない。`WeatherPoint` は必ず `WeatherProviding`（本番は `WeatherKitProvider` が `HourlyWeatherSample` 経由で換算）から受け取る
 4. `RiskAnalyzer` / `AlertScheduler` は解析のたびに生成する（`riskengine-api.md` §6.1）
 
 ## 4. 未確定

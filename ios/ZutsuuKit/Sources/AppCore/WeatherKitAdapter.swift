@@ -54,5 +54,8 @@ public enum WeatherSeries {
         return samples
             .sorted { $0.date < $1.date }
             .compactMap { seen.insert($0.date).inserted ? WeatherPoint($0) : nil }
+            // 非有限の値を含む点は落とす。エンジンは有限値を前提にしている（レビュー: 入力の妥当性）。
+            .filter { $0.pressure.isFinite && $0.temperature.isFinite && $0.humidity.isFinite
+                      && $0.precipitationChance.isFinite && $0.precipitationAmount.isFinite }
     }
 }

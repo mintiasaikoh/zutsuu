@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/RiskAnalyzer.swift
+// 気象の時系列からリスク曲線（HourlyRisk の列）を作る。
+// 点数化に前後の時刻が要る計算（気圧変化・気温変動）を 1 箇所で扱うため。
+// 関連: CompositeRisk.swift, AlertScheduler.swift, docs/riskengine-api.md §4
 import Foundation
 
 /// 1 時刻分のリスク判定結果。

@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/RiskFactors.swift
+// 要因ごとの点数（気圧変化・絶対気圧・湿度・降水・気温変動）。
+// 合計だけでなく内訳を持ち、通知文面と個人化の説明変数に使うため。
+// 関連: CompositeRisk.swift, ../PersonalRisk/PersonalRiskModel.swift
 /// 複合リスクスコアの内訳。
 public struct RiskFactors: Sendable, Hashable {
     /// 気圧の変化量スコア（0〜8）。「急降下中」を表す。

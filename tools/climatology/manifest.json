@@ -1,0 +1,143 @@
+{
+  "output": "regen.bin",
+  "output_sha256": "85f14d5d6828db8bf2a12f67f84f4fdf14e79a22a54820624e21d8b71ebb7398",
+  "generated_at": "2026-09-12T06:04:48.672137+00:00",
+  "days": 10958,
+  "years": {
+    "first": 1991,
+    "last": 2020,
+    "count": 30,
+    "complete": true
+  },
+  "inputs": [
+    {
+      "file": "slp.1991.nc",
+      "sha256": "2465150fc626171221e735bc59093eaeef6769f3ab3e9b457c5d468789b3f585"
+    },
+    {
+      "file": "slp.1992.nc",
+      "sha256": "56b2694f88ca94785b52274f8600149f48596d97ea2d82d7aadbae13a8c46331"
+    },
+    {
+      "file": "slp.1993.nc",
+      "sha256": "c036f17b971d85e9440472532cf633663a2d78f18735c178c118c1e5caccd5d8"
+    },
+    {
+      "file": "slp.1994.nc",
+      "sha256": "032c6b49c208891e7b969ff29fe6eea32d968fa4fe01b2bb19f38cad2078f12b"
+    },
+    {
+      "file": "slp.1995.nc",
+      "sha256": "aaefdd19ac669a3307ac6a9439c4f8fb6f3782ef355feb70ad5981c8b390abd5"
+    },
+    {
+      "file": "slp.1996.nc",
+      "sha256": "b3cf299c22bdb3f41970ab1fd062d206b4ad1f68b972871f4c32fd950288a55f"
+    },
+    {
+      "file": "slp.1997.nc",
+      "sha256": "517242c47ad3c0050b592469614b46a471dda5ca1682947817401f7a2f93c60d"
+    },
+    {
+      "file": "slp.1998.nc",
+      "sha256": "ee3676ea59d843435c5523dcbc914847d96be9c8f1d116c08bab13d59662c7cd"
+    },
+    {
+      "file": "slp.1999.nc",
+      "sha256": "d7a31fb8f3fab881dbda9e6daa499f6d73b092e32cab0b3b8c92fd93d1970a73"
+    },
+    {
+      "file": "slp.2000.nc",
+      "sha256": "d034948865484415b6c6e0f4892d45f8ae4576208b250fbad135916d2dabf4e5"
+    },
+    {
+      "file": "slp.2001.nc",
+      "sha256": "52a07457cc3c73256eca06a40b846013c7b59546ea2fdd7aee1e523599e4d9f4"
+    },
+    {
+      "file": "slp.2002.nc",
+      "sha256": "a87ae5806dda4ea7ded79b9ce6e32dcc5546295b549cacef456d0fcd5a97aef5"
+    },
+    {
+      "file": "slp.2003.nc",
+      "sha256": "152317b9f98b73572b88da6da709428477c37d18441fdacbe5b5e83a06419d38"
+    },
+    {
+      "file": "slp.2004.nc",
+      "sha256": "f69a8d849a45c02589e261576dbb6fc5b79ea5f30328c7f6abbae6c3559483e2"
+    },
+    {
+      "file": "slp.2005.nc",
+      "sha256": "94c19c4bf9d0a968b7c3e8c21d0cb187caac869e80a6d3817a29217ced678798"
+    },
+    {
+      "file": "slp.2006.nc",
+      "sha256": "ac338f1cd1b11363a5bfbf2a5eeeb11463a37138d01f4023a9756ce987b7e860"
+    },
+    {
+      "file": "slp.2007.nc",
+      "sha256": "193de08f48c521f0baa836fd5a97fc8fdb495e2287a516496620ddcdb8beaf83"
+    },
+    {
+      "file": "slp.2008.nc",
+      "sha256": "4bff463b7a3362e8ec51dda0dff36425113e524fbafb8ba34d7f62ba769b2974"
+    },
+    {
+      "file": "slp.2009.nc",
+      "sha256": "fe47c3063487b1d2d5b69739132a58573e0b84e1ee4f04b1059a1659b6bafe9d"
+    },
+    {
+      "file": "slp.2010.nc",
+      "sha256": "ca1dfc326002595216dfd8add9728440c91f3cd4411a3f1c43756cd78ed2d573"
+    },
+    {
+      "file": "slp.2011.nc",
+      "sha256": "061c00a3e4c35264f6b3a5b9fd3c7a077f4d765df521ca1e48d23cfb461edca4"
+    },
+    {
+      "file": "slp.2012.nc",
+      "sha256": "fdf76bf2eb6f9d7e9791dac28080d1e272c2b9fdcb0f06aa120b089551e6cdd2"
+    },
+    {
+      "file": "slp.2013.nc",
+      "sha256": "1362750bbd51c60e129d79018cc6b987274fba0132ee9ee9f5197ddb1bcd75c2"
+    },
+    {
+      "file": "slp.2014.nc",
+      "sha256": "6a0024e59e8dbaf578bacf118dcd82af81cf66af1dbcd397cf945950b948df45"
+    },
+    {
+      "file": "slp.2015.nc",
+      "sha256": "84ef0b1d6d384313bb9875004b8927c668ba7c6bac8f3d267ea73798ed56f68c"
+    },
+    {
+      "file": "slp.2016.nc",
+      "sha256": "398ef8a885cfe6a6e4215a17878c2055bf0097f4f8d5ae1e6d9efb8bd026cf0a"
+    },
+    {
+      "file": "slp.2017.nc",
+      "sha256": "64c126387ae1fb1b278e28f30debe87998907e890d45846beb73ae9262621c51"
+    },
+    {
+      "file": "slp.2018.nc",
+      "sha256": "3fb6d4fe731ee5b699b892f10c7f3820e3779481e617622e36aad2cfb4bd4eb3"
+    },
+    {
+      "file": "slp.2019.nc",
+      "sha256": "0b20174c632d344fec1f08c4650e91fb20d8b863b3ff6cc1847ed2fdd6832071"
+    },
+    {
+      "file": "slp.2020.nc",
+      "sha256": "f21a19a43c10e4714efb5edd84a68bad996897ceeab9dc42a783516d038c1622"
+    }
+  ],
+  "percentiles": [
+    10,
+    25,
+    40
+  ],
+  "environment": {
+    "python": "3.13.5",
+    "numpy": "2.5.3"
+  }
+}

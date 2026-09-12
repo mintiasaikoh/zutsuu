@@ -54,6 +54,8 @@ targets:
       - package: ZutsuuAds
         product: ZutsuuAds
       - target: ZutsuuWatch
+    scheme:
+      testTargets: [ZutsuuAppTests]
     entitlements:
       path: ZutsuuApp.entitlements
       properties:
@@ -76,6 +78,21 @@ targets:
         # Google の代表 ID のみ。リリース前に公式の全リストへ差し替える（Plan 4 の宿題）。
         SKAdNetworkItems:
           - SKAdNetworkIdentifier: cstr6suwn9.skadnetwork
+
+  # アプリ層の結合テスト（ForecastPipeline・CheckInStore・台帳・広告の方針）。
+  ZutsuuAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: ZutsuuApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mintiasaikoh.zutsuu.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/ZutsuuApp.app/ZutsuuApp
+        BUNDLE_LOADER: $(TEST_HOST)
 
   # Plan 5: Watch アプリ（単一ターゲット形式）。予報は取らず、iPhone の要約表示と 1 タップ記録だけ。
   ZutsuuWatch:

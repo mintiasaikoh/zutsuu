@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/WeatherPoint.swift
+// 1 時刻の気象観測・予報の値型。
+// 単位（hPa・℃・%）を型の契約として固定し、アダプタ以外で換算させないため。
+// 関連: RiskAnalyzer.swift, ../AppCore/WeatherKitAdapter.swift
 import Foundation
 
 /// 気象データの中立表現。アプリ層が WeatherKit から変換して渡す。

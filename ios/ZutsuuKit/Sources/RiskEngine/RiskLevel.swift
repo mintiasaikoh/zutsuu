@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/RiskLevel.swift
+// リスクの 4 段階。
+// TypeScript 版との移植契約（rawValue 1〜4）を型で固定するため。
+// 関連: CompositeRisk.swift, docs/riskengine-api.md §3.6
 /// リスクの 4 段階。src/index.ts の `type RiskLevel` の定義に合わせている。
 ///
 /// `rawValue` の 1〜4 は TypeScript 実装との移植契約であり、

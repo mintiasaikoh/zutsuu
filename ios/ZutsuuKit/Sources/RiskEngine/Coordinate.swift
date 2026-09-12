@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/Coordinate.swift
+// 緯度経度の値型。
+// CoreLocation に依存せずにエンジンと平年値テーブルへ地点を渡すため。
+// 関連: PressureClimatology.swift, RiskAnalyzer.swift
 /// 地点の緯度・経度。
 ///
 /// 緯度と経度は同じ `Double` で意味だけが違うため、隣り合う引数として渡すと

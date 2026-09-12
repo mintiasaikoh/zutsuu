@@ -41,6 +41,13 @@ public struct ReanalysisClimatology: PressureClimatology, Sendable {
         guard data.count == expected else {
             throw ClimatologyTableError.badSize(expected: expected, actual: data.count)
         }
+        // ヘッダの版と次元も見る（magic とサイズだけでは、次元の違う表を読み違える）。
+        let header = data.prefix(Self.headerSize).withUnsafeBytes { raw -> [UInt16] in
+            (0..<5).map { UInt16(littleEndian: raw.loadUnaligned(fromByteOffset: 4 + $0 * 2, as: UInt16.self)) }
+        }
+        guard header == [1, UInt16(Self.latCount), UInt16(Self.lonCount), 12, UInt16(Self.statCount)] else {
+            throw ClimatologyTableError.badHeader
+        }
         let body = data.dropFirst(Self.headerSize)
         table = body.withUnsafeBytes { raw in
             raw.bindMemory(to: Int16.self).map { Int16(littleEndian: $0) }

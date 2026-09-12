@@ -32,9 +32,16 @@ final class ForecastPipeline {
     private var coordinate: Coordinate?
     private let store: CheckInStore
     private let weather: any WeatherProviding
-    private let location: LocationProvider
-    private let notifications: NotificationClient
-    private let ledgerStore = NotificationLedgerStore()
+    private let location: any LocationProviding
+    private let notifications: any NotificationScheduling
+    private let defaults: UserDefaults
+    /// 直近の再予約。record と refresh が交差しても、再予約は 1 本ずつ順に走らせる（レビュー: 再予約の競合）。
+    private var rescheduleChain: Task<Void, Never>?
+    /// 通知の追加に失敗したか。ホームで伝える（レビュー R08）。
+    private(set) var notificationScheduleFailed = false
+    private let ledgerStore: NotificationLedgerStore
+    /// 現在時刻。テストで進められるように注入する。
+    let clock: @Sendable () -> Date
     private var rescheduleGeneration = 0
     /// 同梱の平年値テーブル。読めなければ暫定の `NeutralClimatology`（絶対気圧 0pt）へ倒し、ログに残す。
     private let climatology: any PressureClimatology = {
@@ -46,17 +53,39 @@ final class ForecastPipeline {
 
     init(store: CheckInStore,
          weather: any WeatherProviding = WeatherKitProvider(),
-         location: LocationProvider = LocationProvider(),
-         notifications: NotificationClient = NotificationClient()) {
+         location: any LocationProviding = LocationProvider(),
+         notifications: any NotificationScheduling = NotificationClient(),
+         defaults: UserDefaults = .standard,
+         clock: @escaping @Sendable () -> Date = { Date() }) {
         self.store = store
         self.weather = weather
         self.location = location
         self.notifications = notifications
+        self.defaults = defaults
+        self.clock = clock
+        ledgerStore = NotificationLedgerStore(defaults: defaults)
+    }
+
+    private static let lastCoordinateKey = "location.last"
+
+    /// 位置が取れないときは直近の成功した座標に倒す（バックグラウンド更新で位置が取れない場合の備え）。
+    private func resolveCoordinate() async throws -> Coordinate {
+        do {
+            let coordinate = try await location.current()
+            defaults.set([coordinate.latitude, coordinate.longitude], forKey: Self.lastCoordinateKey)
+            return coordinate
+        } catch LocationError.unavailable {
+            guard let saved = defaults.array(forKey: Self.lastCoordinateKey) as? [Double], saved.count == 2 else {
+                throw LocationError.unavailable
+            }
+            Self.logger.notice("位置が取れないため直近の座標を使う")
+            return Coordinate(latitude: saved[0], longitude: saved[1])
+        }
     }
 
     /// 起動時・画面表示時に呼ぶ。直近 30 分以内に更新済みなら何もしない。
     func refreshIfStale() async {
-        if let lastUpdated, Date().timeIntervalSince(lastUpdated) < 30 * 60 { return }
+        if let lastUpdated, clock().timeIntervalSince(lastUpdated) < 30 * 60 { return }
         await refresh()
     }
 
@@ -70,22 +99,30 @@ final class ForecastPipeline {
         defer { isRefreshing = false }
         errorMessage = nil
         do {
-            let now = Date()
+            let now = clock()
             let calendar = Calendar.current
-            let coordinate = try await location.current()
+            let coordinate = try await resolveCoordinate()
             let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
             // 解析は前方窓（6 時間）が欠ける末尾を返さないので、72 時間先まで評価するために 78 時間取る（レビュー R23）。
             let end = now.addingTimeInterval(78 * 3600)
-            let samples = try await weather.hourly(at: coordinate, from: start, to: end)
+            let points = try await weather.hourly(at: coordinate, from: start, to: end)
 
             self.coordinate = coordinate
-            series = WeatherSeries.hourly(from: samples)
+            series = points
             // 解析のたびに生成する（Calendar を保持するため。riskengine-api.md §6.1）。
             let analyzer = RiskAnalyzer(climatology: climatology,
                                         coordinate: coordinate, calendar: calendar)
             risks = analyzer.analyze(series)
+            guard !risks.isEmpty, risk(at: now) != nil else {
+                // 系列が現在を含まない・短すぎる予報は成功として公開しない（レビュー: 入力の妥当性）。
+                throw ForecastError.seriesDoesNotCoverNow
+            }
             swing = TemperatureSwingDetector.detect(in: series, now: now, calendar: calendar)
             lastUpdated = now
+            // 要因なしで保存済みの記録に、取れた予報の要因を後から付ける（レビュー R09）。
+            if let updated = try? store.backfillFactors(risk: { [self] in risk(at: $0) }), updated > 0 {
+                Self.logger.notice("要因を後から付けた記録: \(updated) 件")
+            }
             recordedDays = (try? store.recordedDayCount(calendar: calendar)) ?? 0
             await rescheduleNotifications(now: now)
             publishWatchContext(now: now)
@@ -100,8 +137,8 @@ final class ForecastPipeline {
     func record(_ checkIn: HealthCheckIn) async throws {
         try store.save(checkIn, risk: risk(at: checkIn.date))
         recordedDays = (try? store.recordedDayCount(calendar: .current)) ?? recordedDays
-        await rescheduleNotifications(now: Date())
-        publishWatchContext(now: Date())
+        await rescheduleNotifications(now: clock())
+        publishWatchContext(now: clock())
     }
 
     /// Watch からの記録。iPhone と同じ保存経路（重複防止・再学習・再予約）を通す。
@@ -114,7 +151,7 @@ final class ForecastPipeline {
 
     /// 設定（静穏時間・体質申告）の変更。予報が手元にあれば通信せずに通知だけ組み直す（レビュー R06）。
     func applySettingsChange() async {
-        if risks.isEmpty { await refresh() } else { await rescheduleNotifications(now: Date()) }
+        if risks.isEmpty { await refresh() } else { await rescheduleNotifications(now: clock()) }
     }
 
     /// 今後 24 時間のレベルと次の通知の見出しだけを Watch へ渡す（設計書 §7.2 の線引き）。
@@ -129,11 +166,11 @@ final class ForecastPipeline {
     }
 
     /// 表示用の現在時刻のリスク。系列にその時刻がなければ nil。
-    var current: HourlyRisk? { risk(at: Date()) }
+    var current: HourlyRisk? { risk(at: clock()) }
 
     /// 現在時刻以降の曲線（画面の時間別一覧用）。
     var upcoming: [HourlyRisk] {
-        let hourStart = Self.floorToHour(Date())
+        let hourStart = Self.floorToHour(clock())
         return risks.filter { $0.point.date >= hourStart }
     }
 
@@ -146,10 +183,21 @@ final class ForecastPipeline {
         Date(timeIntervalSince1970: (date.timeIntervalSince1970 / 3600).rounded(.down) * 3600)
     }
 
-    /// 通知用の判定だけを個人化し、表示用の `risks` は汎用のまま（personalrisk-api.md §4）。
+    /// 再予約を 1 本ずつ順に走らせる。前の再予約が await の途中でも、次は終わるまで待つ。
     private func rescheduleNotifications(now: Date) async {
+        let previous = rescheduleChain
+        let task = Task { @MainActor [weak self] in
+            await previous?.value
+            await self?.rescheduleNotificationsNow(now: now)
+        }
+        rescheduleChain = task
+        await task.value
+    }
+
+    /// 通知用の判定だけを個人化し、表示用の `risks` は汎用のまま（personalrisk-api.md §4）。
+    private func rescheduleNotificationsNow(now: Date) async {
         guard !risks.isEmpty else { return }
-        let settings = AppSettings.load()
+        let settings = AppSettings.load(from: defaults)
         let calendar = Calendar.current
         // 学習は全履歴 × 2000 反復で、記録が増えると UI スレッドを塞ぐ（レビュー R12）。裏で回し、
         // その間に別の再予約が始まっていたら（世代が進んでいたら）この結果は捨てる。
@@ -197,6 +245,7 @@ final class ForecastPipeline {
         ledger = ledger.removing(cancel)
             .recording(additions.filter { !failed.contains(AlertNotifications.identifier(for: $0)) })
         ledgerStore.save(ledger)
+        notificationScheduleFailed = !failed.isEmpty
 
         // 「次の通知」は実際の保留一覧から作る（レビュー R08）。
         let pendingNow = await notifications.pending().filter { $0.fireDate > now }
@@ -211,6 +260,8 @@ final class ForecastPipeline {
             }
         Self.logger.info("通知予約: 予定 \(alerts.count) 件、追加 \(additions.count) 件、取消 \(cancel.count) 件、失敗 \(failed.count) 件")
     }
+
+    enum ForecastError: Error { case seriesDoesNotCoverNow }
 
     private static func describe(_ error: any Error) -> String {
         switch error {

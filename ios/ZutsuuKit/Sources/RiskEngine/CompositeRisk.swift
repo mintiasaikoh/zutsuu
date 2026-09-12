@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/CompositeRisk.swift
+// 気圧・湿度・降水・気温変動の点数を合計し、18pt 満点のリスク判定にする。
+// 要因ごとの点数と合計・レベルを 1 箇所で確定させ、表示と通知が同じ判定を使うため。
+// 関連: Scoring.swift, RiskFactors.swift, docs/riskengine-api.md §3
 /// スコアからリスクレベルへの変換。閾値は src/index.ts の computeCompositeRisk に一致させている。
 func riskLevel(forScore score: Int) -> RiskLevel {
     if score >= 7 { return .danger }

@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/AlertScheduler.swift
+// リスク曲線からエピソードを取り出し、通知の発火時刻と種別を決める。
+// 1 回の荒天で通知を連投せず、静穏時間も破らずに事前予告と起床時通知を出し分けるため。
+// 関連: RiskAnalyzer.swift, ../AppCore/NotificationReconciler.swift, docs/riskengine-api.md §5
 import Foundation
 
 /// 通知を出さない時間帯。端末ローカル時刻の壁時計で判定する。

@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/RiskAssessment.swift
+// レベル・合計点・要因内訳をまとめた判定の値型。
+// 表示・通知・学習が同じ判定を受け渡すため。
+// 関連: RiskFactors.swift, RiskLevel.swift
 /// リスク判定の結果。`HourlyRisk` 経由でアプリ層へ公開される。
 /// エンジンが算出するのが本来の生成経路だが、SwiftUI プレビューや
 /// テストが合成のリスク曲線を組み立てられるよう init も公開している。

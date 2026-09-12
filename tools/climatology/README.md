@@ -18,3 +18,5 @@ done
 - 元データは NOAA PSL の NCEP/NCAR Reanalysis 1（パブリックドメイン）。年 1 ファイル約 6MB、30 年で約 190MB
 - 期間・統計量・格子を変えたら `ReanalysisClimatology.swift` の定数とテストの期待値も合わせる
 - 生成した `.bin` と `show_points.py` の出力の一部（代表地点）を調査ノートに残す
+- 生成すると `manifest.json`（入力 30 ファイルの sha256、年の連続性、出力の sha256、生成環境）が同じディレクトリに出る。
+  同梱の `.bin` の sha256 と `manifest.json` の `output_sha256` が一致することが再現性の確認になる（2026-09-12 に一致を確認）

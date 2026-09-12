@@ -64,11 +64,14 @@ cd ios/ZutsuuKit && swift test
 cd ios/ZutsuuAds && swift test --filter AdPolicyTests
 # アプリのビルド（シミュレータ）
 cd ios/ZutsuuApp && xcodegen generate && xcodebuild -scheme ZutsuuApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+# アプリ層の結合テスト（ForecastPipeline・CheckInStore・AdsCoordinator。予報・位置・通知センターは Tests/Fakes.swift で差し替え）
+cd ios/ZutsuuApp && xcodebuild test -scheme ZutsuuApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:ZutsuuAppTests
 ```
 
 シミュレータ検証の罠: AppStorage の仕込みは `simctl spawn … defaults write`（起動引数だと書き込みが効かない）、
 アプリ終了直後の defaults 書き込みは書き戻しと競合する、Watch→iPhone の `transferUserInfo` は届かない（`sendMessage` は届く）、
 署名なしビルドは entitlements が空（App Group・WeatherKit は実機で確認）、
+テストホストとして起動するアプリはインメモリの SwiftData を 1 つだけ作り、テストは `ZutsuuApp.sharedContainer` を使う（同じモデルのコンテナを 2 つ作ると fetch がトラップで落ちる）、
 iOS 26.3 シミュレータのスイッチ（Toggle）は短いタップを取りこぼす（システム設定アプリでも同じ。0.2 秒押すかドラッグで切り替わる。アプリの不具合ではない）。
 
 | スコア | レベル |

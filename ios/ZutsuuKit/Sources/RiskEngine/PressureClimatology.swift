@@ -1,3 +1,7 @@
+// /Users/mymac/zutsuu/ios/ZutsuuKit/Sources/RiskEngine/PressureClimatology.swift
+// 地点・月ごとの海面気圧の分布上の位置を返す抽象。
+// 平年値テーブルの実体（AppCore）を差し替え可能にし、エンジンをテーブル無しでも完成させるため。
+// 関連: ../AppCore/ReanalysisClimatology.swift, docs/riskengine-api.md §2.2
 /// 地点・月ごとの海面気圧の平年分布。
 /// 実装は Plan 6 で NOAA 再解析ベースの静的テーブルとして与える。
 /// ここで抽象化しておくことで、テーブルが無くてもエンジンを完成させられる。

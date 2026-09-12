@@ -53,6 +53,23 @@ final class CheckInRecord {
         RiskFactors(pressureChange: pressureChange, pressureBaseline: pressureBaseline,
                     humidity: humidity, precipitation: precipitation, temperature: temperature)
     }
+
+    /// 後から取れた予報の要因と生値を書き込む（`backfillFactors`）。
+    func apply(_ risk: HourlyRisk) {
+        let factors = risk.assessment.factors
+        hasFactors = true
+        pressureChange = factors.pressureChange
+        pressureBaseline = factors.pressureBaseline
+        humidity = factors.humidity
+        precipitation = factors.precipitation
+        temperature = factors.temperature
+        levelRaw = risk.assessment.level.rawValue
+        pressureHPa = risk.point.pressure
+        pressureChange3h = risk.pressureChanges.threeHour
+        humidityPercent = risk.point.humidity
+        precipitationChance = risk.point.precipitationChance
+        temperatureC = risk.point.temperature
+    }
 }
 
 @MainActor
@@ -70,7 +87,29 @@ final class CheckInStore {
         descriptor.fetchLimit = 1
         if try context.fetchCount(descriptor) > 0 { return }
         context.insert(CheckInRecord(checkIn: checkIn, risk: risk))
-        try context.save()
+        do {
+            try context.save()
+        } catch {
+            // 保存に失敗した insert を context に残すと、次の fetch が「保存済み」と誤認して
+            // 再試行を早期 return させる（レビュー: 保存失敗後の再試行）。巻き戻す。
+            context.rollback()
+            throw error
+        }
+    }
+
+    /// 要因なしで保存した記録に、後から取れた予報の要因を付ける（レビュー R09）。
+    /// 系列に入口時刻がある記録だけを更新し、更新した件数を返す。スキーマは変えない。
+    @discardableResult
+    func backfillFactors(risk: (Date) -> HourlyRisk?) throws -> Int {
+        let descriptor = FetchDescriptor<CheckInRecord>(predicate: #Predicate { !$0.hasFactors })
+        var updated = 0
+        for record in try context.fetch(descriptor) {
+            guard let hourly = risk(record.date) else { continue }
+            record.apply(hourly)
+            updated += 1
+        }
+        if updated > 0 { try context.save() }
+        return updated
     }
 
     /// 要因付きの記録だけを学習に使う。

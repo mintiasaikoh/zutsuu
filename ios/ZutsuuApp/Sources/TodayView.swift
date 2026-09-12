@@ -125,7 +125,11 @@ struct TodayView: View {
     private var nextAlertCard: some View {
         if pipeline.current != nil {
             Card(palette: palette, title: String(localized: "次の通知"), backgroundOpacity: cardOpacity) {
-                if pipeline.notificationsAuthorized == false {
+                if pipeline.notificationScheduleFailed {
+                    Text("通知の予約に失敗しました。下に引いて更新すると、もう一度予約します。")
+                        .foregroundStyle(palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if pipeline.notificationsAuthorized == false {
                     Text("通知が許可されていないため、お知らせは届きません。設定アプリから許可できます。")
                         .foregroundStyle(palette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -154,6 +158,11 @@ struct TodayView: View {
                 Text("更新 \(updated.formatted(date: .omitted, time: .shortened))")
             }
             if let attribution = pipeline.attribution {
+                // Apple Weather の帰属表示: マークとリンクの両方（設計書 §9）。
+                AsyncImage(url: attribution.markURL) { image in
+                    image.resizable().scaledToFit().frame(height: 14)
+                } placeholder: { EmptyView() }
+                    .accessibilityHidden(true)
                 Link("Apple Weather のデータについて", destination: attribution.legalPageURL)
             }
         }

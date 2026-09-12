@@ -62,6 +62,36 @@ def main():
         f.write(header)
         f.write(table.astype("<i2").tobytes())
     print(f"days={len(months)} table={table.shape} bytes={16 + table.size * 2}")
+    write_manifest(directory, output, len(months))
+
+
+def write_manifest(directory, output, days):
+    """入力ファイルの一覧・ハッシュ・生成環境を残し、同じ表を再現できるようにする。"""
+    import hashlib, json, platform, datetime
+    def sha256(path):
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    inputs = sorted(glob.glob(f"{directory}/slp.*.nc"))
+    years = [int(p.rsplit(".", 2)[-2]) for p in inputs]
+    manifest = {
+        "output": output.split("/")[-1],
+        "output_sha256": sha256(output),
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "days": days,
+        "years": {"first": min(years), "last": max(years), "count": len(years),
+                  "complete": years == list(range(min(years), max(years) + 1))},
+        "inputs": [{"file": p.split("/")[-1], "sha256": sha256(p)} for p in inputs],
+        "percentiles": list(PERCENTILES),
+        "environment": {"python": platform.python_version(), "numpy": np.__version__},
+    }
+    import os
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifest.json")
+    with open(path, "w") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    print(f"manifest={path} years={manifest['years']}")
 
 
 if __name__ == "__main__":

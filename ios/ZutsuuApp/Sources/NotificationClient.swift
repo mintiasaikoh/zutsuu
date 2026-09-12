@@ -7,7 +7,16 @@ import UserNotifications
 import AppCore
 import RiskEngine
 
-struct NotificationClient: Sendable {
+/// 通知センターとの入出力。テストでは差し替える。
+protocol NotificationScheduling: Sendable {
+    func requestAuthorization() async -> Bool
+    func authorizationStatus() async -> UNAuthorizationStatus
+    func pending() async -> [PendingAlert]
+    @discardableResult
+    func apply(cancel: [String], add: [ScheduledAlert], risks: [HourlyRisk], calendar: Calendar) async -> Set<String>
+}
+
+struct NotificationClient: NotificationScheduling, Sendable {
     private enum Key {
         static let kind = "kind"
         static let targetDate = "targetDate"
