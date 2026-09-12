@@ -17,6 +17,10 @@ public struct KiabouAmbientBackdrop: View {
     public init() {}
 
     public var body: some View {
+        // body で読むことで、読み込み完了（loadedResting）の変化が再描画→update の再実行につながる。
+        // update クロージャの中でしか読まないと、読み込みが onAppear より後に終わったとき
+        // update が二度と呼ばれず、購読されないまま静止する（2026-09-12 に実測）。
+        let running = visible && scenePhase == .active && scene.loadedResting == false
         RealityView { content in
             content.camera = .virtual
             content.renderingEffects.motionBlur = .disabled
@@ -25,7 +29,6 @@ public struct KiabouAmbientBackdrop: View {
             content.renderingEffects.dynamicRange = .standard
             content.add(scene.root)
         } update: { content in
-            let running = visible && scenePhase == .active && scene.loadedResting == false
             if running { scene.subscribe(to: content) } else { scene.stop() }
             scene.setMotion(enabled: running)
         }
