@@ -14,6 +14,8 @@ final class WatchSessionBridge: NSObject {
     nonisolated static let checkInKey = "checkIn"
     nonisolated static let ackKey = "ack"
     nonisolated static let savedKey = "saved"
+    /// iPhone → Watch: 未確認の記録を送り直してほしい（iPhone 側の有効化が Watch の再送より遅れた場合）。
+    nonisolated static let resendKey = "resend"
 
     private let pipeline: ForecastPipeline
     private let logger = Logger(subsystem: "com.mintiasaikoh.zutsuu", category: "watch")
@@ -74,6 +76,10 @@ extension WatchSessionBridge: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                              error: (any Error)?) {
         // 有効化後に最新の要約を送り直す。手元にあればそれを、無ければ予報を取り直して送る。
+        // あわせて Watch に未確認の記録の再送を頼む（Watch の再送が iPhone の有効化より先に走って空振りするため）。
+        if session.isReachable {
+            session.sendMessage([Self.resendKey: true], replyHandler: nil, errorHandler: { @Sendable _ in })
+        }
         Task { @MainActor in
             if let cached = lastContext { send(cached) } else { await pipeline.refreshIfStale() }
         }

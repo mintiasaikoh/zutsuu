@@ -107,6 +107,8 @@ enum WatchSessionBridgeKeys {
     static let ackKey = "ack"
     /// sendMessage の返信: 保存できたか。
     static let savedKey = "saved"
+    /// iPhone → Watch: 未確認の記録を送り直す合図。
+    static let resendKey = "resend"
 }
 
 extension WatchSession: WCSessionDelegate {
@@ -129,6 +131,10 @@ extension WatchSession: WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        if message[WatchSessionBridgeKeys.resendKey] as? Bool == true {
+            Task { @MainActor in flush() }
+            return
+        }
         guard let raw = message[WatchSessionBridgeKeys.ackKey] as? String, let id = UUID(uuidString: raw) else { return }
         Task { @MainActor in acknowledge(id) }
     }
