@@ -41,7 +41,8 @@ final class WatchSessionBridge: NSObject {
             do {
                 let checkIn = try WatchCheckIn.decode(data)
                 try await pipeline.record(fromWatch: checkIn)
-                logger.notice("Watch の記録を保存: \(checkIn.feeling, privacy: .public) \(checkIn.id.uuidString, privacy: .public)")
+                // 体調と記録 ID は健康情報なので公開ログに出さない（レビュー R22）。保存できた事実だけ残す。
+                logger.notice("Watch の記録を保存した")
             } catch {
                 logger.error("Watch の記録を保存できません: \(String(describing: error), privacy: .public)")
             }
