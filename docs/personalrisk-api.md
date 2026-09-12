@@ -35,7 +35,7 @@ ios/ZutsuuKit/Tests/PersonalRiskTests/
 | メンバ | 内容 |
 |---|---|
 | `static let minimumRecordedDays = 30` | これ未満は `.insufficient(remainingDays:)`。§6.3 の下限を設計値として採用（§11.5 の 5、実データで見直す） |
-| `static func make(observations:recordedDays:)` | 要因付きの観測から作る。気圧が動いた記録（気圧変化 or 絶対気圧の点数 > 0）と穏やかな記録に分け、それぞれの「つらい」の件数と割合を返す |
+| `static func make(observations:recordedDays:)` | 要因付きの観測から作る。`recordedDays` には**要因付きの記録がある日数**を渡す（着せ替えの累計日数とは別。全欠測で「準備完了」にしないため。レビュー R20）。気圧が動いた記録（気圧変化 or 絶対気圧の点数 > 0）と穏やかな記録に分け、それぞれの「つらい」の件数と割合を返す |
 | `.insufficient(remainingDays:)` / `.ready(Summary)` | `Summary` は `activeCount` / `activeBad` / `calmCount` / `calmBad`、`activeRate` / `calmRate`（0〜1、件数 0 なら nil） |
 
 文面はアプリ層が作る。「気圧が動いていたときの記録 N 件のうち、つらいが X 件」の形に留め、「気圧に弱い」等の評価語は付けない。体質申告には言及しない（ユーザー決定）。

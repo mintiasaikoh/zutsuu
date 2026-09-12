@@ -585,3 +585,37 @@ struct AlertSchedulerTests {
         #expect(AlertScheduler.grace == 60)
     }
 }
+
+// MARK: - レビュー R11: 個人化後のレベルはスコアに対して単調でない
+
+@Suite("ピークの選び方")
+struct AlertSchedulerPeakTests {
+    private let scheduler = AlertScheduler(calendar: utcCalendar)
+    private let early = utcDate(year: 2026, month: 3, day: 10, hour: 8)
+
+    /// 安心 → 危険（6pt）→ 注意（7pt）の区間で、最高レベルは「危険」。
+    /// スコアだけで選ぶと 7pt の「注意」を代表にしてしまう。
+    @Test("レベルが高い時点を、スコアが高い時点より優先する")
+    func levelBeatsScore() throws {
+        let dangerLow = RiskFactors(pressureChange: 3, pressureBaseline: 0, humidity: 3,
+                                    precipitation: 0, temperature: 0)   // 6pt
+        let cautionHigh = RiskFactors(pressureChange: 3, pressureBaseline: 0, humidity: 0,
+                                      precipitation: 2, temperature: 2)  // 7pt
+        let curve = makeRiskCurve(levels: [.calm, .danger, .caution],
+                                  factors: [curveFactors(), dangerLow, cautionHigh],
+                                  startHour: 12)
+        let alert = try #require(scheduler.schedule(curve, now: early, quietHours: nil).first)
+        #expect(alert.targetLevel == .danger)
+        #expect(alert.assessment.factors == dangerLow)
+    }
+
+    @Test("同じレベルならスコアの高い時点、同点なら早い時点")
+    func scoreBreaksTies() throws {
+        let a = RiskFactors(pressureChange: 4, pressureBaseline: 0, humidity: 1, precipitation: 0, temperature: 0)
+        let b = RiskFactors(pressureChange: 4, pressureBaseline: 1, humidity: 1, precipitation: 0, temperature: 0)
+        let curve = makeRiskCurve(levels: [.calm, .caution, .caution],
+                                  factors: [curveFactors(), a, b], startHour: 12)
+        let alert = try #require(scheduler.schedule(curve, now: early, quietHours: nil).first)
+        #expect(alert.assessment.factors == b)
+    }
+}

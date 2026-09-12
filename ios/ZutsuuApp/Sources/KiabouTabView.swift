@@ -26,6 +26,10 @@ struct KiabouTabView: View {
     private var recordedDays: Int {
         Set(records.map { Calendar.current.startOfDay(for: $0.date) }).count
     }
+    /// 気象要因が付いた記録のある日数。相関レポートの準備完了はこちらで判定する（レビュー R20）。
+    private var analysableDays: Int {
+        Set(records.filter(\.hasFactors).map { Calendar.current.startOfDay(for: $0.date) }).count
+    }
 
     var body: some View {
         NavigationStack {
@@ -178,7 +182,7 @@ struct KiabouTabView: View {
                 SymptomObservation(factors: record.factors,
                                    wasBad: record.feeling == HealthFeelingBadRaw)
             },
-            recordedDays: recordedDays)
+            recordedDays: analysableDays)
         return VStack(alignment: .leading, spacing: 8) {
             Text("気圧との関係").font(.subheadline.weight(.semibold)).foregroundStyle(palette.muted)
             switch report {

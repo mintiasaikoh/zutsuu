@@ -28,7 +28,10 @@ public struct KiabouQuickCheckIn: View {
         _model = State(initialValue: CheckInModel(save: onRecord))
     }
 
-    private var palette: KiabouPalette { KiabouPalette(dim: dim) }
+    @Environment(\.colorScheme) private var colorScheme
+    /// 文字・ボタンの配色はカード（親が OS の明暗で塗る）に合わせる。`dim` はステージの見え方にだけ使う。
+    /// 親と基準が違うと、OS ダーク × 薄明かりオフで暗いカードに暗い文字になる（レビュー R15）。
+    private var palette: KiabouPalette { KiabouPalette(dim: colorScheme == .dark) }
 
     public var body: some View {
         VStack(spacing: 12) {

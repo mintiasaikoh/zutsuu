@@ -11,6 +11,10 @@ import RiskEngine
 struct TodayView: View {
     @Environment(ForecastPipeline.self) private var pipeline
     @Environment(AdsCoordinator.self) private var ads
+    @Environment(\.scenePhase) private var scenePhase
+    /// 時計。毎分進めて「いま」の時間帯・時間別一覧・次の通知の表示を再評価する（レビュー R07）。
+    @State private var clockTick = 0
+    private let clock = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("kiabou.ambient") private var ambient = false
@@ -74,6 +78,10 @@ struct TodayView: View {
             .navigationTitle("今日")
             .refreshable { await pipeline.refresh() }
             .task { await pipeline.refreshIfStale() }
+            .onReceive(clock) { _ in clockTick += 1 }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await pipeline.refreshIfStale() } }
+            }
         }
     }
 
@@ -97,6 +105,7 @@ struct TodayView: View {
                     Text("\(current.assessment.score) / 18 pt")
                         .font(.body.monospacedDigit()).foregroundStyle(palette.muted)
                     Text(FactorText.summary(for: current))
+                        .id(clockTick)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else if pipeline.isRefreshing {
@@ -204,23 +213,10 @@ private struct HourRow: View {
     }
 }
 
-/// 画面用の要因説明。通知文面と同じ言い回しにする。
+/// 画面用の要因説明。通知本文と同じ実装（絶対気圧・1/3/6 時間の気圧変化を含む。レビュー R16）。
 enum FactorText {
     static func summary(for risk: HourlyRisk) -> String {
-        let factors = risk.assessment.factors
-        var parts: [String] = []
-        let change = risk.pressureChanges.threeHour
-        if factors.pressureChange > 0, abs(change).rounded() >= 1 {
-            let amount = Int(abs(change).rounded())
-            parts.append(change < 0 ? String(localized: "3時間で\(amount)hPa低下")
-                                    : String(localized: "3時間で\(amount)hPa上昇"))
-        }
-        if factors.humidity > 0 { parts.append(String(localized: "湿度\(Int(risk.point.humidity.rounded()))%")) }
-        if factors.precipitation > 0 {
-            parts.append(String(localized: "降水確率\(Int(risk.point.precipitationChance.rounded()))%"))
-        }
-        if factors.temperature > 0 { parts.append(String(localized: "気温の急な変化")) }
-        return parts.isEmpty ? String(localized: "大きな変化はありません。")
-                             : parts.joined(separator: String(localized: "、"))
+        let text = AlertNotifications.factorSummary(factors: risk.assessment.factors, risk: risk)
+        return text.isEmpty ? String(localized: "大きな変化はありません。") : text
     }
 }

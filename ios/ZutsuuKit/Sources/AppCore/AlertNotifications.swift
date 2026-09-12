@@ -75,7 +75,8 @@ public enum AlertNotifications {
     }
 
     /// 点数が付いた要因だけを、数値があれば数値付きで並べる。
-    static func factorSummary(factors: RiskFactors, risk: HourlyRisk?) -> String {
+    /// 要因の説明（「3時間で6hPa低下、湿度92%」）。通知本文とホームの「いま」で同じ文面を使う（レビュー R16）。
+    public static func factorSummary(factors: RiskFactors, risk: HourlyRisk?) -> String {
         var parts: [String] = []
         if factors.pressureChange > 0 {
             parts.append(pressureText(risk?.pressureChanges) ?? String(localized: "気圧の変化", bundle: .module))

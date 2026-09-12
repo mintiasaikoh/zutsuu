@@ -35,6 +35,7 @@ final class ForecastPipeline {
     private let location: LocationProvider
     private let notifications: NotificationClient
     private let ledgerStore = NotificationLedgerStore()
+    private var rescheduleGeneration = 0
     /// 同梱の平年値テーブル。読めなければ暫定の `NeutralClimatology`（絶対気圧 0pt）へ倒し、ログに残す。
     private let climatology: any PressureClimatology = {
         do { return try ReanalysisClimatology.bundled() } catch {
@@ -73,7 +74,8 @@ final class ForecastPipeline {
             let calendar = Calendar.current
             let coordinate = try await location.current()
             let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
-            let end = now.addingTimeInterval(72 * 3600)
+            // 解析は前方窓（6 時間）が欠ける末尾を返さないので、72 時間先まで評価するために 78 時間取る（レビュー R23）。
+            let end = now.addingTimeInterval(78 * 3600)
             let samples = try await weather.hourly(at: coordinate, from: start, to: end)
 
             self.coordinate = coordinate
@@ -103,9 +105,16 @@ final class ForecastPipeline {
     }
 
     /// Watch からの記録。iPhone と同じ保存経路（重複防止・再学習・再予約）を通す。
+    /// 予報を持たない起動直後なら先に取り直し、要因付きで保存できる機会を増やす（レビュー R09）。
     func record(fromWatch checkIn: WatchCheckIn) async throws {
         guard let feeling = HealthFeeling(rawValue: checkIn.feeling) else { return }
+        if risk(at: checkIn.date) == nil { await refresh() }
         try await record(HealthCheckIn(id: checkIn.id, date: checkIn.date, feeling: feeling))
+    }
+
+    /// 設定（静穏時間・体質申告）の変更。予報が手元にあれば通信せずに通知だけ組み直す（レビュー R06）。
+    func applySettingsChange() async {
+        if risks.isEmpty { await refresh() } else { await rescheduleNotifications(now: Date()) }
     }
 
     /// 今後 24 時間のレベルと次の通知の見出しだけを Watch へ渡す（設計書 §7.2 の線引き）。
@@ -114,7 +123,8 @@ final class ForecastPipeline {
         let hourly = upcoming.prefix(24).map {
             WatchContext.HourLevel(date: $0.point.date, level: $0.assessment.level)
         }
-        sink(WatchContext(updatedAt: now, hourly: Array(hourly),
+        // 鮮度は予報の取得時刻で測る。記録のたびに更新扱いにすると古い予報が新しく見える（レビュー R10）。
+        sink(WatchContext(updatedAt: lastUpdated ?? now, hourly: Array(hourly),
                           nextAlertTitle: nextAlert?.title, recordedDays: recordedDays))
     }
 
@@ -141,9 +151,16 @@ final class ForecastPipeline {
         guard !risks.isEmpty else { return }
         let settings = AppSettings.load()
         let calendar = Calendar.current
-        let model = PersonalRiskModel.fitted(
-            to: (try? store.observations()) ?? [],
-            prior: .prior(for: settings.sensitivities))
+        // 学習は全履歴 × 2000 反復で、記録が増えると UI スレッドを塞ぐ（レビュー R12）。裏で回し、
+        // その間に別の再予約が始まっていたら（世代が進んでいたら）この結果は捨てる。
+        rescheduleGeneration += 1
+        let generation = rescheduleGeneration
+        let observations = (try? store.observations()) ?? []
+        let prior = PersonalRiskModel.prior(for: settings.sensitivities)
+        let model = await Task.detached(priority: .userInitiated) {
+            PersonalRiskModel.fitted(to: observations, prior: prior)
+        }.value
+        guard generation == rescheduleGeneration else { return }
         let schedulingRisks = risks.map { risk in
             HourlyRisk(point: risk.point,
                        assessment: RiskAssessment(

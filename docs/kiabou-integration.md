@@ -131,7 +131,8 @@ public struct HealthCheckIn: Identifiable, Codable, Sendable, Equatable {
 - 「体調の入力に戻る」は表示切り替えであり、**「良い」を保存しない**（画面を戻る操作を回復記録にしない）
 - 休む表示（毛布にくるまる）は「きあぼうと寝る」ボタンで本人が選ぶ。記録は表示を変えない（2026-09-11）
 - ゆらぎは 0.025〜0.4 Hz の 1/f。Reduce Motion で自動停止、手動の停止ボタンもある。中断復帰時に位置を飛ばさない（delta を 0.1 秒で切り詰め）
-- 見え方（背景・薄明かり）は `AppStorage` キー `kiabou.scene` / `kiabou.native.dim`。端末の画面輝度は変更しない
+- 見え方（背景・薄明かり）は `AppStorage` キー `kiabou.scene` / `kiabou.native.dim`。端末の画面輝度は変更しない。
+  `dim` はステージの見え方にだけ効き、文字・ボタンの配色は親カードと同じ OS の明暗で決める（レビュー R15）
 - 症状の軽減効果を主張する文言は置かない（設計書 §6.3 の記述主義に従う）
 
 ## 4. 素材

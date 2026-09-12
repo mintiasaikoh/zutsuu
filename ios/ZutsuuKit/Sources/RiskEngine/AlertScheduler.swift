@@ -99,8 +99,8 @@ public struct ScheduledAlert: Sendable, Equatable {
 
     /// エピソード中に到達する最高レベル。
     /// `assessment` から導出する。二重に持つと食い違い得るため格納しない。
-    /// スコアが高い時点のレベルが低くなることはない（変換は単調）ので、
-    /// 最高スコアの判定を持つことと最高レベルを名乗ることは両立する。
+    /// `assessment` はレベル → スコアの順で最高の時点なので、常に区間の最高レベル。
+    /// （個人化後のレベルは汎用スコアに対して単調でないため、スコアだけでは保証できない）
     public var targetLevel: RiskLevel { assessment.level }
 
     /// 事前警告か起床時通知か。
@@ -194,13 +194,19 @@ public struct AlertScheduler: Sendable {
             }
             let existing = result[index]
             // 同点は更新しない。エピソード内の規則と同じく早いほうを残す。
-            guard alert.assessment.score > existing.assessment.score else { continue }
+            guard Self.outranks(alert.assessment, existing.assessment) else { continue }
             result[index] = ScheduledAlert(fireDate: existing.fireDate,
                                            targetDate: existing.targetDate,
                                            assessment: alert.assessment,
                                            kind: .wakeUp)
         }
         return result
+    }
+
+    /// `candidate` が `current` より上か。レベル → スコアの順に比べる。
+    static func outranks(_ candidate: RiskAssessment, _ current: RiskAssessment) -> Bool {
+        if candidate.level != current.level { return candidate.level > current.level }
+        return candidate.score > current.score
     }
 
     /// 閾値以上が連続する区間。
@@ -225,8 +231,10 @@ public struct AlertScheduler: Sendable {
                 continue
             }
             if var episode = current {
-                // 同点は更新しない。同じ強さなら早い時点の内訳を残す。
-                if assessment.score > episode.peak.score { episode.peak = assessment }
+                // レベルが上、同じレベルならスコアが上の時点を採る。同点は更新しない（早い時点を残す）。
+                // 個人化後のレベルは汎用スコアに対して単調でないため、スコアだけで選ぶと
+                // 区間の最高レベルを取り違える（レビュー R11）。
+                if Self.outranks(assessment, episode.peak) { episode.peak = assessment }
                 current = episode
             } else {
                 current = Episode(onsetDate: risk.point.date,

@@ -47,7 +47,7 @@ struct SettingsView: View {
                     Text("この時間帯に当たる通知は明けの時刻に届きます。")
                 }
                 Section {
-                    SensitivityToggles { Task { await pipeline.refresh() } }
+                    SensitivityToggles { Task { await pipeline.applySettingsChange() } }
                 } header: {
                     Text("心当たりのある条件")
                 } footer: {
@@ -62,9 +62,9 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .task { notificationsGranted = await notifications.authorizationStatus() == .authorized }
-            .onChange(of: quietEnabled) { _, _ in Task { await pipeline.refresh() } }
-            .onChange(of: quietStart) { _, _ in Task { await pipeline.refresh() } }
-            .onChange(of: quietEnd) { _, _ in Task { await pipeline.refresh() } }
+            .onChange(of: quietEnabled) { _, _ in Task { await pipeline.applySettingsChange() } }
+            .onChange(of: quietStart) { _, _ in Task { await pipeline.applySettingsChange() } }
+            .onChange(of: quietEnd) { _, _ in Task { await pipeline.applySettingsChange() } }
         }
     }
 }

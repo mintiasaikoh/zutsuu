@@ -69,6 +69,8 @@ final class AdsCoordinator {
     func noteForeground() {
         let isColdStart = !hasSeenFirstForeground
         hasSeenFirstForeground = true
+        // 起動時オフラインで同意の取得に失敗した場合の再試行（レビュー R14）。
+        if !isColdStart, !provider.isReady { startAfterFirstFrame() }
         defer { launchedFromNotification = false }
         guard appOpenGate.shouldShow(lastShown: appOpenLastShown, now: Date(), isColdStart: isColdStart,
                                      launchedFromNotification: launchedFromNotification) else { return }

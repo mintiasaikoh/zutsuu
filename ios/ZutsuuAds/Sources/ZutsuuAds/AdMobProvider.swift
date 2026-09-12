@@ -24,12 +24,14 @@ public final class AdMobProvider: NSObject, AdProvider {
         super.init()
     }
 
+    /// 何度呼んでもよい。同意の取得に失敗したときは次の呼び出しでやり直す（レビュー R14）。
     public func start() async {
         guard !started else { return }
         started = true
         await requestConsent()
         guard ConsentInformation.shared.canRequestAds else {
             logger.notice("広告の同意が得られていないため SDK を起動しない")
+            started = false
             return
         }
         await requestTracking()
@@ -70,6 +72,7 @@ public final class AdMobProvider: NSObject, AdProvider {
     // MARK: - 全画面
 
     public func presentInterstitial() async -> Bool {
+        if isReady, interstitial == nil { await loadInterstitial() }
         guard isReady, let ad = interstitial, let root = Self.rootViewController else { return false }
         interstitial = nil
         ad.present(from: root)
@@ -78,6 +81,7 @@ public final class AdMobProvider: NSObject, AdProvider {
     }
 
     public func presentAppOpen() async -> Bool {
+        if isReady, appOpen == nil { await loadAppOpen() }
         guard isReady, let ad = appOpen, let root = Self.rootViewController else { return false }
         appOpen = nil
         ad.present(from: root)
@@ -86,6 +90,8 @@ public final class AdMobProvider: NSObject, AdProvider {
     }
 
     public func presentRewarded() async -> Bool {
+        // 初回ロードに失敗していたら（在庫なし・オフライン）ここで取り直す。取れなければ false。
+        if isReady, rewarded == nil { await loadRewarded() }
         guard isReady, let ad = rewarded, let root = Self.rootViewController else { return false }
         rewarded = nil
         let earned = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in

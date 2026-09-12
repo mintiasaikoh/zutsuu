@@ -27,6 +27,8 @@ public struct NativeAdCard: View {
             }
         }
         .onAppear { if isEnabled { loader.loadIfNeeded() } }
+        // 表示後に SDK が準備完了になる順序が普通なので、有効化の変化でもロードする（レビュー R13）。
+        .onChange(of: isEnabled) { _, enabled in if enabled { loader.loadIfNeeded() } }
     }
 }
 

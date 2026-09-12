@@ -36,6 +36,7 @@ public struct RiskAnalyzer: Sendable {
     private let climatology: any PressureClimatology
     private let coordinate: Coordinate
     private let calendar: Calendar
+    private let gregorian: Calendar
 
     public init(climatology: any PressureClimatology,
                 coordinate: Coordinate,
@@ -43,6 +44,9 @@ public struct RiskAnalyzer: Sendable {
         self.climatology = climatology
         self.coordinate = coordinate
         self.calendar = calendar
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        self.gregorian = gregorian
     }
 
     /// 系列末尾 `lookaheadHours` 時間は前方窓が系列外に出るため返さない。
@@ -60,7 +64,9 @@ public struct RiskAnalyzer: Sendable {
         series.indices.dropLast(Self.lookaheadHours).map { index in
             let point = series[index]
             let changes = pressureChanges(series, at: index)
-            let month = calendar.component(.month, from: point.date)
+            // 平年値テーブルは西暦の季節月で作られている。端末の暦（イスラム暦等）の月番号を
+            // 渡すと季節の違う分布で採点するため、タイムゾーンだけ引き継いでグレゴリオ暦で数える（レビュー R21）。
+            let month = gregorian.component(.month, from: point.date)
 
             let assessment = compositeRisk(
                 pressureChanges: changes,

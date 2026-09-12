@@ -162,3 +162,32 @@ struct RiskAnalyzerTests {
         #expect(result[0].point.pressure == 1010)
     }
 }
+
+// MARK: - レビュー R21: 平年値の月は端末の暦に依存しない
+
+/// 月番号を記録する平年値。どの月で引かれたかを外から見る。
+private final class MonthRecorder: PressureClimatology, @unchecked Sendable {
+    var months: [Int] = []
+    func percentile(pressure: Double, coordinate: Coordinate, month: Int) -> Double {
+        months.append(month)
+        return 0.5
+    }
+}
+
+@Suite("平年値の参照月")
+struct ClimatologyMonthTests {
+    @Test("イスラム暦の端末でも西暦の月で平年値を引く")
+    func gregorianMonthRegardlessOfDeviceCalendar() {
+        var islamic = Calendar(identifier: .islamicUmmAlQura)
+        islamic.timeZone = TimeZone(identifier: "UTC")!
+        let recorder = MonthRecorder()
+        let series = (0..<12).map { hour in
+            WeatherPoint(date: utcDate(year: 2026, month: 3, day: 10, hour: hour), pressure: 1013,
+                         temperature: 20, humidity: 50, precipitationChance: 0, precipitationAmount: 0)
+        }
+        _ = RiskAnalyzer(climatology: recorder, coordinate: Coordinate(latitude: 35, longitude: 139),
+                         calendar: islamic).analyze(series)
+        #expect(!recorder.months.isEmpty)
+        #expect(Set(recorder.months) == [3])
+    }
+}
