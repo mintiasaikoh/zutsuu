@@ -33,9 +33,10 @@ struct RootView: View {
                     SettingsView()
                 }
             }
-            // 広告 SDK はメイン画面の描画後に非同期で起動（設計書 §8.3）。タブ切り替えを画面遷移として数える。
+            // 広告 SDK はメイン画面の描画後に非同期で起動（設計書 §8.3）。
+            // タブ切り替えでの全画面広告（Tier 2）は出さない（2026-09-12 ユーザー決定。体調が悪いときに
+            // 開くアプリで画面切り替えのたびに全画面が出るのは体験を壊す）。頻度制御の実装は残してある。
             .task { ads.startAfterFirstFrame() }
-            .onChange(of: selectedTab) { _, _ in ads.noteTransition() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { ads.noteForeground() } }
         } else {
             OnboardingView {
