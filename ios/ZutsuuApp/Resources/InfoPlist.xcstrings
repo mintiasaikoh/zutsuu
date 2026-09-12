@@ -34,40 +34,6 @@
           }
         }
       }
-    },
-    "NSUserTrackingUsageDescription": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird verwendet, um Anzeigen zu zeigen, die für dich relevanter sind. Deine Einträge und dein Standort werden nie für Werbung genutzt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Used to show ads that are more relevant to you. Your check-ins and location are never used for ads."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "表示する広告を、あなたに関係のあるものにするために使います。体調の記録や位置情報は広告に使いません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "더 관련성 높은 광고를 보여주기 위해 사용해요. 컨디션 기록과 위치 정보는 광고에 쓰지 않아요."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用于展示与你更相关的广告。你的记录和位置信息绝不会用于广告。"
-          }
-        }
-      }
     }
   },
   "version": "1.0"

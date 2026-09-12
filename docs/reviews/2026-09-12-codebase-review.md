@@ -227,3 +227,5 @@ CI に tsc とアプリの結合テスト（`ZutsuuAppTests` 12 件: 予報→�
 `docs/playbooks/protocol.md` と `docs/prompts/commands.md` への参照は追跡ファイルには存在しない（レビュー時点の未追跡ファイル由来と判断）。
 残るユーザー作業: AdMob 本番 ID・SKAdNetwork 全リスト・UMP メッセージ・Watch の App ID と App Group・実機確認。
 検証: ZutsuuKit 182 件・ZutsuuAds 8 件のテスト通過、`tsc --noEmit` 通過、iPhone/Watch のシミュレータビルド通過。Watch → iPhone の保存確認はシミュレータの sendMessage 経路で確認、transferUserInfo 経路と実機は未確認。
+
+**追記（同日）**: 広告は全廃止（ユーザー決定）。R13 / R14 / R20 の広告部分と「リリース設定」の AdMob・SKAdNetwork・UMP の宿題は対象外になった。

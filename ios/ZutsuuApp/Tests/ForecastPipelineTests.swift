@@ -10,6 +10,7 @@ import KiabouUI
 import RiskEngine
 @testable import ZutsuuApp
 
+extension SharedStoreSuites {
 @MainActor
 @Suite("予報パイプラインの結合")
 struct ForecastPipelineTests {
@@ -130,6 +131,8 @@ struct ForecastPipelineTests {
         #expect(pipeline.errorMessage != nil)
         #expect(pipeline.current == nil)
     }
+}
+
 }
 
 /// テストから進められる時計。

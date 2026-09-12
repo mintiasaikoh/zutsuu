@@ -53,7 +53,6 @@ iOSアプリ版のリスクエンジンは別実装であり、仕様は `docs/r
 | 場所 | 中身 | 正典 |
 |---|---|---|
 | `ios/ZutsuuKit` | Swift Package: RiskEngine / PersonalRisk / KiabouUI / AppCore | `docs/riskengine-api.md`, `docs/personalrisk-api.md`, `docs/kiabou-integration.md`, `docs/appcore-api.md` |
-| `ios/ZutsuuAds` | Swift Package: AdPolicy（純粋ロジック）/ ZutsuuAds（AdMob ラッパー）。ZutsuuKit に依存しない | `docs/plans/2026-09-12-admob-plan4.md` |
 | `ios/ZutsuuApp` | iPhone アプリ（xcodegen。`project.yml` が正、`.xcodeproj` は生成物） | `docs/plans/2026-08-30-global-ios-app-design.md` |
 | `ios/ZutsuuWatch`, `ios/ZutsuuWatchWidget` | Watch アプリとコンプリケーション | `docs/plans/2026-09-12-watchos-plan5.md` |
 | `tools/climatology`, `tools/localization` | 平年値テーブルの生成、String Catalog の再抽出 | 各 README |
@@ -61,10 +60,9 @@ iOSアプリ版のリスクエンジンは別実装であり、仕様は `docs/r
 ```bash
 # パッケージのテスト
 cd ios/ZutsuuKit && swift test
-cd ios/ZutsuuAds && swift test --filter AdPolicyTests
 # アプリのビルド（シミュレータ）
 cd ios/ZutsuuApp && xcodegen generate && xcodebuild -scheme ZutsuuApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
-# アプリ層の結合テスト（ForecastPipeline・CheckInStore・AdsCoordinator。予報・位置・通知センターは Tests/Fakes.swift で差し替え）
+# アプリ層の結合テスト（ForecastPipeline・CheckInStore。予報・位置・通知センターは Tests/Fakes.swift で差し替え）
 cd ios/ZutsuuApp && xcodebuild test -scheme ZutsuuApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:ZutsuuAppTests
 ```
 

@@ -13,7 +13,6 @@ enum AppTab: String {
 
 struct RootView: View {
     @Environment(ForecastPipeline.self) private var pipeline
-    @Environment(AdsCoordinator.self) private var ads
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
     /// 起動引数 `-ui.selectedTab checkIn` でも指定できる（検証用）。
@@ -33,11 +32,9 @@ struct RootView: View {
                     SettingsView()
                 }
             }
-            // 広告 SDK はメイン画面の描画後に非同期で起動（設計書 §8.3）。
-            // タブ切り替えでの全画面広告（Tier 2）は出さない（2026-09-12 ユーザー決定。体調が悪いときに
-            // 開くアプリで画面切り替えのたびに全画面が出るのは体験を壊す）。頻度制御の実装は残してある。
-            .task { ads.startAfterFirstFrame() }
-            .onChange(of: scenePhase) { _, phase in if phase == .active { ads.noteForeground() } }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await pipeline.refreshIfStale() } }
+            }
         } else {
             OnboardingView {
                 onboardingCompleted = true

@@ -6,7 +6,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(ForecastPipeline.self) private var pipeline
-    @Environment(AdsCoordinator.self) private var ads
     @AppStorage("kiabou.ambient") private var ambient = false
     @AppStorage(SettingsKey.quietEnabled) private var quietEnabled = true
     @AppStorage(SettingsKey.quietStart) private var quietStart = 22.0
@@ -55,9 +54,6 @@ struct SettingsView: View {
                 }
                 Section("このアプリについて") {
                     NavigationLink("スコアの根拠") { EvidenceView() }
-                    if ads.provider.privacyOptionsRequired {
-                        Button("広告のプライバシー設定") { Task { await ads.provider.presentPrivacyOptions() } }
-                    }
                 }
             }
             .navigationTitle("設定")

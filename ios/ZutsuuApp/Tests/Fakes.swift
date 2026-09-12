@@ -2,6 +2,7 @@
 // 結合テスト用の差し替え: 予報・位置・通知センター。
 // 時刻・通知センター・保存を差し替えられる境界を作り、失敗と再実行を再現するため（レビュー: 結合テスト）。
 // 関連: ForecastPipelineTests.swift, ../Sources/ForecastPipeline.swift
+import Testing
 import Foundation
 import SwiftData
 import UserNotifications
@@ -68,6 +69,10 @@ func makeForecast(from start: Date, hours: Int, riseAt: Date?) -> [WeatherPoint]
                             precipitationAmount: 0)
     }
 }
+
+/// 共有コンテナを使うスイートの親。並列に走ると別テストの「記録を空にする」が交差するので直列にする
+/// （`.serialized` は入れ子のスイートにも効く）。
+@Suite(.serialized) struct SharedStoreSuites {}
 
 /// アプリと同じ（インメモリの）コンテナに新しいコンテキストを作り、記録を空にして返す。
 @MainActor

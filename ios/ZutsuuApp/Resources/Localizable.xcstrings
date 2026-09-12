@@ -1438,62 +1438,6 @@
         }
       }
     },
-    "広告のプライバシー設定": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Datenschutzeinstellungen für Werbung"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ad privacy settings"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "광고 개인정보 설정"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "广告隐私设置"
-          }
-        }
-      }
-    },
-    "広告を見て 7 日間ひらく": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anzeige ansehen und 7 Tage freischalten"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Watch an ad to unlock for 7 days"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "광고 보고 7일 동안 열기"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "观看广告解锁 7 天"
-          }
-        }
-      }
-    },
     "心当たりのある条件": {
       "localizations": {
         "de": {
@@ -2190,34 +2134,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "已记录 %lld 天"
-          }
-        }
-      }
-    },
-    "記録は十分に溜まりました。短い広告を見ると、7 日間ひらきます。": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du hast genug Einträge. Sieh dir eine kurze Anzeige an, um dies 7 Tage lang freizuschalten."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You have enough check-ins. Watch a short ad to unlock this for 7 days."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기록이 충분히 쌓였어요. 짧은 광고를 보면 7일 동안 열려요."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "记录已经足够了。观看一段短广告即可解锁 7 天。"
           }
         }
       }

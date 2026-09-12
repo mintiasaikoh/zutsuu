@@ -42,12 +42,6 @@ jobs:
         working-directory: .
         run: npm install --no-audit --no-fund && ./node_modules/.bin/tsc --noEmit
 
-      # 広告パッケージ（ZutsuuAds）。頻度制御の純粋ロジック（AdPolicy）だけ macOS でテストできる。
-      # Google Mobile Ads SDK は iOS 条件付き依存なので、ここでは解決されるだけで結びつかない。
-      - name: Test ads policy
-        working-directory: ios/ZutsuuAds
-        run: swift test --filter AdPolicyTests
-
       # swift test は macOS ネイティブでしか走らない。実際の配布先は iOS と watchOS
       # なので、macOS にしか無い API が紛れ込んでもここまでの手順では気付けない
       # （Plan 2・Plan 5 でアプリに組み込むまで表面化しない）。両プラットフォーム向けの

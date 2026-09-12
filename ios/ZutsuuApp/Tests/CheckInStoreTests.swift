@@ -9,6 +9,7 @@ import KiabouUI
 import RiskEngine
 @testable import ZutsuuApp
 
+extension SharedStoreSuites {
 @MainActor
 @Suite("体調記録の保存")
 struct CheckInStoreTests {
@@ -45,4 +46,5 @@ struct CheckInStoreTests {
         // 2 回目は対象がない。
         #expect(try store.backfillFactors { _ in risk } == 0)
     }
+}
 }

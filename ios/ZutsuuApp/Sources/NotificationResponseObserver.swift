@@ -1,22 +1,14 @@
 // /Users/mymac/zutsuu/ios/ZutsuuApp/Sources/NotificationResponseObserver.swift
-// 通知タップで前面に来たことを広告側へ伝え、前面中の通知もバナーで見せる。
-// 通知経由の起動を遷移カウントと App Open 広告から除外するため（設計書 §8.2）。
-// 関連: AdsCoordinator.swift, NotificationClient.swift
+// 前面にいる間も通知をバナーで見せるための UNUserNotificationCenter デリゲート。
+// 前面中は既定で通知が表示されないため、起動中に発火した予約が見えなくなるのを防ぐ。
+// 関連: NotificationClient.swift, ForecastPipeline.swift
 import Foundation
 import UserNotifications
 
 final class NotificationResponseObserver: NSObject, UNUserNotificationCenterDelegate {
-    private let onOpenFromNotification: @MainActor @Sendable () -> Void
-
-    init(onOpenFromNotification: @escaping @MainActor @Sendable () -> Void) {
-        self.onOpenFromNotification = onOpenFromNotification
+    override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
-    }
-
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
-        await onOpenFromNotification()
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
