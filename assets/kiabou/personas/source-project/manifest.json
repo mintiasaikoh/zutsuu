@@ -1,0 +1,212 @@
+{
+  "_file": "/Users/mymac/zutsuu/assets/kiabou/personas/source-project/manifest.json",
+  "_role": "編集用原本と生成元ファイルの保存一覧。",
+  "_reason": "元ファイルと同一内容でコピーできたことを確認するため。",
+  "_related": [
+    "README.md",
+    "../README.md",
+    "kiabou/personas/build_personas.py"
+  ],
+  "files": [
+    {
+      "path": "kiabou/kiabou.blend",
+      "bytes": 357150,
+      "sha256": "1b2e09c8e06e35b498b10271cdb606293b5087256be357623221e32037811e23"
+    },
+    {
+      "path": "kiabou/kiabou-rest.blend",
+      "bytes": 424966,
+      "sha256": "0b5942e2361f347f74bfc025dcd81ea3dfc6e0a51914dab8a0bba448334c7635"
+    },
+    {
+      "path": "kiabou/geometry.py",
+      "bytes": 4066,
+      "sha256": "2429731f4c514db0e66926dfc991b32cb2020c872ef0d6d5db9b5457563143cf"
+    },
+    {
+      "path": "kiabou/create_kiabou.py",
+      "bytes": 8971,
+      "sha256": "69b529126a58c468fa35de6ce798cb590cd1efd23032654bf910478b48d6dad4"
+    },
+    {
+      "path": "kiabou/export_kiabou.py",
+      "bytes": 2901,
+      "sha256": "73a07b5884840a21a470a00ab4366c11b7e2b07321179fe291291428b86cbace"
+    },
+    {
+      "path": "kiabou/create_rest.py",
+      "bytes": 5012,
+      "sha256": "c62871bae3d25698e235752a60060583c81d6539b123409f5737b9e7704ea9f8"
+    },
+    {
+      "path": "kiabou/export_rest_usdz.py",
+      "bytes": 1145,
+      "sha256": "3107180b85bd04736edba5edd704fae757d3d611176b27522aea158f1536f21f"
+    },
+    {
+      "path": "kiabou/variations/materials.py",
+      "bytes": 6234,
+      "sha256": "afc6a3bbd0198b151055c5ec6d9b207700c6f816efc47253f2c210f77b48bd98"
+    },
+    {
+      "path": "kiabou/variations/props.py",
+      "bytes": 2629,
+      "sha256": "9c3d52280513ab275bfaff4f3ac30054ac6f570a291c171b3ba6c015502770e4"
+    },
+    {
+      "path": "kiabou/variations/exporting.py",
+      "bytes": 5162,
+      "sha256": "fd26dff2f6224d52ad95298eb3f9f853554c8d69ae768357683dca8bea5cc5d1"
+    },
+    {
+      "path": "kiabou/personas/build_personas.py",
+      "bytes": 3014,
+      "sha256": "9896bf175a7cbf975ba4fb082d1deeee62c1600db856e0f53f6fe017ec3f63f0"
+    },
+    {
+      "path": "kiabou/personas/outfits.py",
+      "bytes": 5936,
+      "sha256": "9828c0d6bb9075be6c54a5be4b9c98c7568dd4fb6c568f577c311a5057ab255d"
+    },
+    {
+      "path": "kiabou/personas/shapes.py",
+      "bytes": 5653,
+      "sha256": "4bb2f352c552427de65ce58d8cfcdbd696466489806b75a51f96433e95672732"
+    },
+    {
+      "path": "kiabou/personas/verify_personas.py",
+      "bytes": 4021,
+      "sha256": "c595c4607b0d65f5762681da4735f52a42ec494fa0a1eda26f8000da7bb948bd"
+    },
+    {
+      "path": "kiabou/personas/gyaru/costume.blend",
+      "bytes": 592458,
+      "sha256": "b92deca54cacd0948d0cd3068ad496e72af723a03f7fc11ddafddc16b2a40c6e"
+    },
+    {
+      "path": "kiabou/personas/gyaru/rest.blend",
+      "bytes": 668519,
+      "sha256": "25f738dc4f8513f6d743a849d61399c0d68338bf3c0a6ca8223556dc6ac15e1f"
+    },
+    {
+      "path": "kiabou/personas/gyaru/textures/blanket.png",
+      "bytes": 1857,
+      "sha256": "86b01feae02620fe30b4ec902194ad41677c30a0924b0cdb9707b41731815510"
+    },
+    {
+      "path": "kiabou/personas/gyaru/textures/body.png",
+      "bytes": 6354,
+      "sha256": "5eef9640736e94b232034346eb4a3d1ae48cbce770e7a0c1582a0e7513bc40cd"
+    },
+    {
+      "path": "kiabou/personas/gyaru/textures/fins.png",
+      "bytes": 417,
+      "sha256": "dce07b900f8f2dad648162dcf1809558f3bcf0cb34d0738b8e0b963cf14e9bed"
+    },
+    {
+      "path": "kiabou/personas/rapper/costume.blend",
+      "bytes": 559538,
+      "sha256": "9b05af82c27d60113870dd1d00ce8d539229595ea83eaf16b11e13aebba2dc09"
+    },
+    {
+      "path": "kiabou/personas/rapper/rest.blend",
+      "bytes": 640612,
+      "sha256": "48faa630fc7dd99ae543d0bddf97ac4a1fa3ad02249d334b707154bd8ec31a7f"
+    },
+    {
+      "path": "kiabou/personas/rapper/textures/blanket.png",
+      "bytes": 1857,
+      "sha256": "f2ef77d6167f0b1a4296401d5ce54f7d5353ce886eadee15890ebf911393accd"
+    },
+    {
+      "path": "kiabou/personas/rapper/textures/body.png",
+      "bytes": 6287,
+      "sha256": "5ed249f029768d2c54079de11c68993b6164c9b9c783ae4be6736634e3d7c920"
+    },
+    {
+      "path": "kiabou/personas/rapper/textures/fins.png",
+      "bytes": 418,
+      "sha256": "5e7934e6741785eb3c03d46dd7211aad44e4721ca14fed0a2aa8892209cccf0b"
+    },
+    {
+      "path": "kiabou/personas/punk/costume.blend",
+      "bytes": 464169,
+      "sha256": "93eacf715774d26d6f1158fa565a5e692f8d80f7ddaac509d4eb59bb1d463260"
+    },
+    {
+      "path": "kiabou/personas/punk/rest.blend",
+      "bytes": 553645,
+      "sha256": "dca7dccf5685b9c97742e278ca4756bc435b4e0cd0ee9a83316081dc5d64a65f"
+    },
+    {
+      "path": "kiabou/personas/punk/textures/blanket.png",
+      "bytes": 1857,
+      "sha256": "fa456fdbd618fa314a55d344d9f43d08c9a2d01d6bc2501d6f4e0d56308b1a4d"
+    },
+    {
+      "path": "kiabou/personas/punk/textures/body.png",
+      "bytes": 6198,
+      "sha256": "e25ae52dd08e1a9d2f7d5d4d1f2d530396b158933cc188ac809448044caf966e"
+    },
+    {
+      "path": "kiabou/personas/punk/textures/check.png",
+      "bytes": 944,
+      "sha256": "39c46ca9983b707fb2deca45980dafb969f6961a53c1cca4216453a3185201b9"
+    },
+    {
+      "path": "kiabou/personas/punk/textures/fins.png",
+      "bytes": 417,
+      "sha256": "af815875d34d5179a686d88d6ad46ae1595660037210f114ba80aca9bda6249d"
+    },
+    {
+      "path": "kiabou/personas/cafe/costume.blend",
+      "bytes": 487571,
+      "sha256": "f65c913734eda84585ba9ac6db829c71c735092f0702577e8ffa8e853c818429"
+    },
+    {
+      "path": "kiabou/personas/cafe/rest.blend",
+      "bytes": 567854,
+      "sha256": "0f85b28eb5389b50c67fd46fe989e24c8a3aec4ad3994d4d95b7141da5abb401"
+    },
+    {
+      "path": "kiabou/personas/cafe/textures/blanket.png",
+      "bytes": 1857,
+      "sha256": "20ecdad40eb0d3f942b0eed343a74cd272b86a9ed59badfa9eee61d8117a175f"
+    },
+    {
+      "path": "kiabou/personas/cafe/textures/body.png",
+      "bytes": 6136,
+      "sha256": "6610a677d63124c64e8bd0602fc2da3d2657d40758f274a38ec3ede5da8d2b3b"
+    },
+    {
+      "path": "kiabou/personas/cafe/textures/fins.png",
+      "bytes": 417,
+      "sha256": "e08f99fc406a8f37173a7be65c35a9361c784da2005b1a1c85733746f23c5851"
+    },
+    {
+      "path": "kiabou/personas/mage/costume.blend",
+      "bytes": 475937,
+      "sha256": "7c139dae87f0c279325a316a49ccff1ce5de2d3d4198fcd2f3b532f7d39005a2"
+    },
+    {
+      "path": "kiabou/personas/mage/rest.blend",
+      "bytes": 558696,
+      "sha256": "48cf25dc4a4ba2aa54a427602a0f90e890fb8cb394a6397629f456b8b2923871"
+    },
+    {
+      "path": "kiabou/personas/mage/textures/blanket.png",
+      "bytes": 1856,
+      "sha256": "3822d5419e166152e44fc25b5655c2a02fede465ecb43185a1890dd62876329c"
+    },
+    {
+      "path": "kiabou/personas/mage/textures/body.png",
+      "bytes": 6338,
+      "sha256": "3f7e8cd93252d1f0fb2295785efdb263e0208dac3b23ba7d9f04e66d0d5ff7d2"
+    },
+    {
+      "path": "kiabou/personas/mage/textures/fins.png",
+      "bytes": 417,
+      "sha256": "3a93541ad2086085477a88a5dd293ca12d835be266b93e5e32cc9472818e80b1"
+    }
+  ]
+}

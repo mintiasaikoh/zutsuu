@@ -5,3 +5,5 @@ dist/
 .swiftpm/
 assets/kiabou/backgrounds/*.zip
 __pycache__/
+assets/kiabou/personas/*.zip
+.claude/
