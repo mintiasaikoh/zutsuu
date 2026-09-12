@@ -57,10 +57,13 @@ final class WatchSessionBridge: NSObject {
 
     private func acknowledge(_ data: Data) {
         guard let checkIn = try? WatchCheckIn.decode(data) else { return }
-        let payload = [Self.ackKey: checkIn.id.uuidString]
+        let payload: [String: String] = [Self.ackKey: checkIn.id.uuidString]
         let session = WCSession.default
         if session.isReachable {
-            session.sendMessage(payload, replyHandler: nil) { _ in session.transferUserInfo(payload) }
+            // エラー処理は別キューで呼ばれる。MainActor 隔離のクロージャを渡さない（Watch 側と同じ理由）。
+            session.sendMessage(payload, replyHandler: nil, errorHandler: { @Sendable _ in
+                WCSession.default.transferUserInfo(payload)
+            })
         } else {
             session.transferUserInfo(payload)
         }

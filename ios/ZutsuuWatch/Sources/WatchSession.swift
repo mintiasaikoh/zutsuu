@@ -60,12 +60,17 @@ final class WatchSession: NSObject {
         guard session.activationState == .activated else { return }
         for checkIn in unacknowledged {
             guard let data = try? checkIn.encoded() else { continue }
-            let payload = [WatchSessionBridgeKeys.checkInKey: data]
+            let payload: [String: Data] = [WatchSessionBridgeKeys.checkInKey: data]
+            let id = checkIn.id
             if session.isReachable {
-                session.sendMessage(payload, replyHandler: { [weak self] reply in
+                // WatchConnectivity は返信・エラーを別キューで呼ぶ。MainActor 隔離のクロージャを渡すと
+                // 実行時の隔離チェックで落ちる（実測）ので、@Sendable で非隔離にし、MainActor へは Task で戻る。
+                session.sendMessage(payload, replyHandler: { @Sendable [weak self] reply in
                     guard reply[WatchSessionBridgeKeys.savedKey] as? Bool == true else { return }
-                    Task { @MainActor in self?.acknowledge(checkIn.id) }
-                }, errorHandler: { _ in session.transferUserInfo(payload) })
+                    Task { @MainActor in self?.acknowledge(id) }
+                }, errorHandler: { @Sendable _ in
+                    WCSession.default.transferUserInfo(payload)
+                })
             } else {
                 session.transferUserInfo(payload)
             }
