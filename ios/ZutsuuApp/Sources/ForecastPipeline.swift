@@ -18,8 +18,11 @@ final class ForecastPipeline {
     private(set) var errorMessage: String?
     private(set) var isRefreshing = false
     private(set) var attribution: WeatherAttribution?
-    /// 予約した通知のうち発火が最も早いもの。ホームの「次の通知」に、通知と同じ文面で出す。
+    /// 実際に保留中の通知のうち発火が最も早いもの。ホームの「次の通知」に、通知と同じ文面で出す。
+    /// 予約処理の後に保留一覧から作るので、権限拒否や追加失敗のときは nil（レビュー R08）。
     private(set) var nextAlert: AlertNotificationContent?
+    /// 通知の権限。nil は未確認。false のときホームは「届かない」と伝える。
+    private(set) var notificationsAuthorized: Bool?
     /// 記録のある暦日の累計。記録の見返り表示に使う。
     private(set) var recordedDays = 0
     /// Watch へ送る要約の出口。予報更新と記録のたびに呼ぶ（Plan 5）。
@@ -31,6 +34,7 @@ final class ForecastPipeline {
     private let weather: any WeatherProviding
     private let location: LocationProvider
     private let notifications: NotificationClient
+    private let ledgerStore = NotificationLedgerStore()
     /// 同梱の平年値テーブル。読めなければ暫定の `NeutralClimatology`（絶対気圧 0pt）へ倒し、ログに残す。
     private let climatology: any PressureClimatology = {
         do { return try ReanalysisClimatology.bundled() } catch {
@@ -150,16 +154,45 @@ final class ForecastPipeline {
         }
         let alerts = AlertScheduler(calendar: calendar)
             .schedule(schedulingRisks, now: now, quietHours: settings.quietHours)
-        nextAlert = alerts.min { $0.fireDate < $1.fireDate }
-            .map { AlertNotifications.content(for: $0, risks: risks, calendar: calendar) }
         // 権限は最初に予約が必要になった時点で求める。未許可のまま add しても届かない。
         if await notifications.authorizationStatus() == .notDetermined {
             _ = await notifications.requestAuthorization()
         }
+        notificationsAuthorized = await notifications.authorizationStatus() == .authorized
+
+        // 台帳（配信済みの記憶）と静穏時間を渡して突き合わせる（レビュー R01 / R02 / R05）。
+        var ledger = ledgerStore.load().pruned(now: now)
         let plan = NotificationReconciler.reconcile(pending: await notifications.pending(),
-                                                    scheduled: alerts, now: now)
-        await notifications.apply(plan, risks: risks, calendar: calendar)
-        Self.logger.info("通知予約: 予定 \(alerts.count) 件、追加 \(plan.add.count) 件、取消 \(plan.cancel.count) 件")
+                                                    scheduled: alerts, ledger: ledger, now: now,
+                                                    quietHours: settings.quietHours, calendar: calendar)
+        // 付け替える起床時通知の本文は、入口時刻の判定を系列から引き直す。系列に無ければ付け替えず温存。
+        let retimed = plan.retime.compactMap { item -> ScheduledAlert? in
+            guard let assessment = risk(at: item.pending.targetDate)?.assessment else { return nil }
+            return ScheduledAlert(fireDate: item.fireDate, targetDate: item.pending.targetDate,
+                                  assessment: assessment, kind: .wakeUp)
+        }
+        // 本文を引き直せなかった付け替え分は取り消さない（消えるより古い時刻で鳴るほうがまし）。
+        let retimedIDs = retimed.map { AlertNotifications.identifier(for: $0) }
+        let droppedRetime = Set(plan.retime.map { $0.pending.identifier }).subtracting(retimedIDs)
+        let cancel = plan.cancel.filter { !droppedRetime.contains($0) }
+        let additions = plan.add + retimed
+        let failed = await notifications.apply(cancel: cancel, add: additions, risks: risks, calendar: calendar)
+        ledger = ledger.removing(cancel)
+            .recording(additions.filter { !failed.contains(AlertNotifications.identifier(for: $0)) })
+        ledgerStore.save(ledger)
+
+        // 「次の通知」は実際の保留一覧から作る（レビュー R08）。
+        let pendingNow = await notifications.pending().filter { $0.fireDate > now }
+        nextAlert = pendingNow.min { $0.fireDate < $1.fireDate }
+            .flatMap { pending in
+                let known = additions.first { AlertNotifications.identifier(for: $0) == pending.identifier }
+                let rebuilt = known ?? risk(at: pending.targetDate).map {
+                    ScheduledAlert(fireDate: pending.fireDate, targetDate: pending.targetDate,
+                                   assessment: $0.assessment, kind: pending.kind)
+                }
+                return rebuilt.map { AlertNotifications.content(for: $0, risks: risks, calendar: calendar) }
+            }
+        Self.logger.info("通知予約: 予定 \(alerts.count) 件、追加 \(additions.count) 件、取消 \(cancel.count) 件、失敗 \(failed.count) 件")
     }
 
     private static func describe(_ error: any Error) -> String {

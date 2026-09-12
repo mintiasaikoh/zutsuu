@@ -70,9 +70,33 @@ hPa / ℃ / % / mm へ揃える唯一の場所。`riskengine-api.md` §2.1 の�
 
 `RiskLevel.displayName`（安心 / やや注意 / 注意 / 危険）もここで定義する（String Catalog でローカライズ、§5）。
 
-### `NotificationReconciler.reconcile(pending:scheduled:now:) -> ReconcilePlan`
+### `NotificationLedger`（2026-09-12、レビュー R01）
 
-`PendingAlert`（identifier / fireDate / kind / targetDate。アプリが `UNUserNotificationCenter` の保留分と `userInfo` から復元する）と `AlertScheduler.schedule` の結果を突き合わせる。
+アプリ自身が予約した通知の台帳（identifier / fireDate / targetDate / kind）。アプリ層が JSON で永続化する（`NotificationLedgerStore`、キー `notifications.ledger`）。
+OS の保留一覧は配信後に消えるため、台帳がないと「配信したが入口はまだ未来」のエピソードを再計算のたびに再予約してしまう。
+
+- `delivered(now:)` — 発火時刻が `now` 以前の識別子 = 配信済み
+- `recording(_:)` / `removing(_:)` — 追加した予約を記録し、取り消した予約は忘れる（取り消したものは配信されていないので再予約を妨げない）
+- `pruned(now:)` — 発火・入口とも 24 時間以上前の記録を捨てる（識別子に入口時刻が入るので、同じエピソードが後日再出現することはない）
+
+### `NotificationReconciler.reconcile(pending:scheduled:ledger:now:quietHours:calendar:) -> ReconcilePlan`
+
+`PendingAlert`（identifier / fireDate / kind / targetDate。アプリが `UNUserNotificationCenter` の保留分と `userInfo` から復元する）、`AlertScheduler.schedule` の結果、台帳を突き合わせる。`ReconcilePlan` は `cancel` / `add` に加えて `retime`（温存中の起床時通知を別の発火時刻で登録し直す指示。本文の判定はアプリ層が入口時刻の系列から引き直し、引けなければ取り消さず温存）を返す。
+静穏時間を渡さない旧シグネチャ `reconcile(pending:scheduled:ledger:now:)` は付け替えをしない。
+
+| 順 | 規則 | 結果 |
+|---|---|---|
+| 1 | 台帳で `fireDate <= now` のエピソード | **配信済み**。新しい予定に同じ識別子があっても追加しない |
+| 2 | 保留分の `fireDate <= now` | 対象外（温存も取消もしない） |
+| 3 | 同じ識別子が新しい予定にもある | 発火時刻が同じ（差 1 秒未満）なら温存。違えば取消して新しい予定を追加（静穏時間の変更、レビュー R02） |
+| 4 | 入口が `now` 以前の `.wakeUp` | 温存。ただし今の静穏時間から求めた明け（静穏外なら `now + grace`）と発火が違えば `retime` |
+| 5 | それ以外 | 取消 |
+| 6 | 新しい `.wakeUp` と同じ発火時刻の `.wakeUp` を温存・付け替え済み | 追加しない（同じ朝に 2 件並べない、レビュー R05） |
+| 7 | 上限 64 | 温存 + 付け替え + 追加が超える分は発火の遅い追加分から落とす |
+
+旧規則（同じ識別子なら無条件に温存、入口の過ぎた `.wakeUp` は無条件に温存）は 2026-09-12 に上記へ改めた。
+
+#### 旧表（参考。規則 3 以降は上の表が正）
 
 | 順 | 規則 | 結果 |
 |---|---|---|
@@ -113,7 +137,9 @@ NCEP/NCAR Reanalysis 1 の日平均海面気圧 1991〜2020 年から作った�
 
 1. **`WeatherPoint` は必ず `HourlyWeatherSample` 経由で作る。** `HourWeather` のプロパティから直接 `WeatherPoint.init(date:pressure:...)` を呼ぶ経路を作らない
 2. 通知の `identifier` は `AlertNotifications.identifier(for:)` で作り、`kind` と `targetDate` を `userInfo` に入れて `PendingAlert` に復元できるようにする
-3. 再スケジュールは必ず `NotificationReconciler` を通す。`removeAllPendingNotificationRequests()` を呼ばない
+3. 再スケジュールは必ず `NotificationReconciler` を通す。`removeAllPendingNotificationRequests()` を呼ばない。
+   追加・取消した結果は台帳（`NotificationLedger`）に反映して保存する。追加に失敗した識別子は台帳に載せない
+3a. 「次の通知」の表示は予約処理の**後**に実際の保留一覧から作る（レビュー R08）。権限拒否・追加失敗のときは表示しない
 4. `RiskAnalyzer` / `AlertScheduler` は解析のたびに生成する（`riskengine-api.md` §6.1）
 
 ## 4. 未確定

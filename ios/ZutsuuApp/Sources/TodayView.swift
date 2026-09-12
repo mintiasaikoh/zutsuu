@@ -116,7 +116,11 @@ struct TodayView: View {
     private var nextAlertCard: some View {
         if pipeline.current != nil {
             Card(palette: palette, title: String(localized: "次の通知"), backgroundOpacity: cardOpacity) {
-                if let next = pipeline.nextAlert {
+                if pipeline.notificationsAuthorized == false {
+                    Text("通知が許可されていないため、お知らせは届きません。設定アプリから許可できます。")
+                        .foregroundStyle(palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let next = pipeline.nextAlert {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(next.title).font(.title3.weight(.semibold))
                         Text(next.body).foregroundStyle(palette.muted)

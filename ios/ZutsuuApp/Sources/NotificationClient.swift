@@ -40,12 +40,15 @@ struct NotificationClient: Sendable {
         }
     }
 
-    func apply(_ plan: ReconcilePlan, risks: [HourlyRisk], calendar: Calendar) async {
+    /// 取消と追加を適用し、**追加に失敗した識別子**を返す（台帳に載せない・表示に出さないため）。
+    @discardableResult
+    func apply(cancel: [String], add: [ScheduledAlert], risks: [HourlyRisk], calendar: Calendar) async -> Set<String> {
         let center = UNUserNotificationCenter.current()
-        if !plan.cancel.isEmpty {
-            center.removePendingNotificationRequests(withIdentifiers: plan.cancel)
+        if !cancel.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: cancel)
         }
-        for alert in plan.add {
+        var failed = Set<String>()
+        for alert in add {
             let content = AlertNotifications.content(for: alert, risks: risks, calendar: calendar)
             let notification = UNMutableNotificationContent()
             notification.title = content.title
@@ -60,9 +63,14 @@ struct NotificationClient: Sendable {
             let components = calendar.dateComponents(
                 [.year, .month, .day, .hour, .minute, .second], from: content.fireDate)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            try? await center.add(UNNotificationRequest(identifier: content.identifier,
-                                                        content: notification, trigger: trigger))
+            do {
+                try await center.add(UNNotificationRequest(identifier: content.identifier,
+                                                           content: notification, trigger: trigger))
+            } catch {
+                failed.insert(content.identifier)
+            }
         }
+        return failed
     }
 
     private static func name(of kind: AlertKind) -> String {

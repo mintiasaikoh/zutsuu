@@ -44,7 +44,8 @@ public struct QuietHours: Sendable, Equatable {
     /// 日付をまたぐ静穏時間では終了時刻が翌日に来るため、
     /// `date` と同じ日の end を組み立てると 1 日前の時刻になってしまう。
     /// 夏時間で存在しない時刻に当たった場合は `.nextTime` が直後の実在時刻へ送る。
-    func firstMomentOutside(_ date: Date, calendar: Calendar) -> Date? {
+    /// AppCore の `NotificationReconciler` も温存中の起床時通知の付け替えに使う（公開）。
+    public func firstMomentOutside(_ date: Date, calendar: Calendar) -> Date? {
         guard contains(date, calendar: calendar) else { return date }
         let hour = Int(end.rounded(.down))
         let minute = Int(((end - Double(hour)) * 60).rounded())
