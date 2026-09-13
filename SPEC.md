@@ -95,7 +95,7 @@ past_days: 1
 | 朝の予報 | 8:30〜9:30 | 総合予報を送信 |
 | アラート条件 | リスク3以上 | 1〜2時間後に到達予測時に通知 |
 | 寒暖差閾値 | 5℃ | 前日比最高気温差 |
-| 地域 | 練馬区 | 緯度35.74, 経度139.65 |
+| 地域 | Secrets で指定 | LATITUDE / LONGITUDE / LOCATION(未設定なら東京駅) |
 
 ## 技術スタック
 
@@ -143,6 +143,9 @@ gh repo create zutsuu --private --source=. --push
 ```bash
 gh secret set LINE_CHANNEL_TOKEN
 gh secret set LINE_USER_ID
+gh secret set LATITUDE     # 予報地点の緯度
+gh secret set LONGITUDE    # 予報地点の経度
+gh secret set LOCATION     # 通知に表示する地名
 ```
 
 ### 4. 動作確認

@@ -55,8 +55,11 @@ gh workflow run check.yml
 |------|------|
 | LINE_CHANNEL_TOKEN | LINE Messaging APIのチャネルアクセストークン（長期） |
 | LINE_USER_ID | 通知先のユーザーID（Uから始まる） |
+| LATITUDE / LONGITUDE | 予報地点の緯度・経度（未設定なら東京駅） |
+| LOCATION | 通知に表示する地名 |
 
 ## GitHub Secrets
 
 - `LINE_CHANNEL_TOKEN`
 - `LINE_USER_ID`
+- `LATITUDE` / `LONGITUDE` / `LOCATION`（公開リポジトリなので居住地はコードに書かない）

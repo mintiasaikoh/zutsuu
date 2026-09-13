@@ -1,7 +1,8 @@
 const CONFIG = {
-  latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.7377,
-  longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.6458,
-  location: process.env.LOCATION || "練馬区",
+  // 既定値は東京駅。実際の地点は GitHub Secrets(LATITUDE / LONGITUDE / LOCATION)で指定する
+  latitude: process.env.LATITUDE ? Number(process.env.LATITUDE) : 35.6812,
+  longitude: process.env.LONGITUDE ? Number(process.env.LONGITUDE) : 139.7671,
+  location: process.env.LOCATION || "東京",
   quietHours: {
     start: process.env.QUIET_START ? Number(process.env.QUIET_START) : 22,
     end: process.env.QUIET_END ? Number(process.env.QUIET_END) : 8.5,
